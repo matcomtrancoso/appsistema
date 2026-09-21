@@ -1,0 +1,28 @@
+FLOWPLANNER APP: LICENÇA DE USO
+
+Este app é do FlowPlanner. Todos os direitos sobre o app e o código são do FlowPlanner.
+Quem compra recebe o direito de USAR o app, não a propriedade dele.
+
+
+O QUE VOCÊ PODE
+
+- Usar o app nas suas obras e nas obras da sua empresa.
+- Adaptar o app: mudar telas, cores, textos e módulos para o seu jeito de trabalhar.
+- Dar login a quem trabalha com você nessas obras.
+- Guardar o código no seu GitHub privado e publicar o app na sua conta da Vercel, para uso
+  seu e da sua empresa.
+
+
+O QUE VOCÊ NÃO PODE
+
+- Vender, revender, alugar ou sublicenciar o app ou qualquer versão dele, com ou sem mudanças.
+- Distribuir o app ou o código: dar, emprestar ou mandar o ZIP ou a pasta para quem não comprou.
+- Publicar o código em lugar aberto: repositório público no GitHub, site, grupo, curso ou
+  rede social.
+- Oferecer o app, ou uma versão dele, como produto ou serviço seu para outras empresas.
+
+
+EM CASO DE DÚVIDA
+
+Se quiser fazer algo que não está nesta lista, pergunte antes ao FlowPlanner, pelos canais do
+curso.

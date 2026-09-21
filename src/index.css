@@ -1,0 +1,778 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --font: 'Plus Jakarta Sans', -apple-system, "SF Pro Display", system-ui, sans-serif;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: var(--font);
+  background: #EEF3F4;
+  color: #06282A;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─── Tela de boot/carregamento ─── */
+.boot-screen {
+  height: 100dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 24px; text-align: center;
+  background-color: #EEF3F4;
+  background-image:
+    radial-gradient(700px 420px at 112% -10%, rgba(30,230,240,0.18) 0%, rgba(30,230,240,0) 60%),
+    radial-gradient(600px 400px at -12% 110%, rgba(19,96,102,0.10) 0%, rgba(19,96,102,0) 55%);
+}
+.boot-logo {
+  width: 64px; height: 64px; border-radius: 20px;
+  background: linear-gradient(135deg, #136066 0%, #1A7C83 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 14px 36px -10px rgba(19,96,102,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+  animation: boot-pop 0.5s cubic-bezier(0.2,0.8,0.2,1);
+}
+.boot-spinner {
+  width: 22px; height: 22px; border-radius: 999px;
+  border: 3px solid rgba(19,96,102,0.16);
+  border-top-color: #136066;
+  animation: boot-spin 0.8s linear infinite;
+}
+.boot-text { font-size: 13px; font-weight: 700; color: #8C9A9D; letter-spacing: 0.02em; }
+@keyframes boot-spin { to { transform: rotate(360deg); } }
+@keyframes boot-pop { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+#stage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 32px 64px;
+  gap: 32px;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, #d8f0ea 0%, #c8e2dc 60%, #b8d4ce 100%);
+}
+
+.stage-head { text-align: center; max-width: 880px; }
+.stage-eyebrow { font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(43,43,43,0.55); font-weight: 600; margin-bottom: 8px; }
+.stage-title { font-size: 32px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; color: #1B1B1B; }
+.stage-sub { font-size: 15px; color: rgba(43,43,43,0.7); max-width: 640px; margin: 0 auto; line-height: 1.5; }
+
+.devices { display: flex; gap: 64px; align-items: flex-start; flex-wrap: wrap; justify-content: center; }
+.device-wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.device-label { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: rgba(27,27,27,0.85); }
+.device-label .dot { width: 8px; height: 8px; border-radius: 50%; }
+.device-label .role { color: rgba(27,27,27,0.5); font-weight: 500; }
+
+/* ─── Tokens do app — FlowPlanner, tema claro ───
+   Petróleo (#136066) manda; o cyan (#1EE6F0) é destaque, usado com parcimônia.
+   Trocar um valor aqui muda o app inteiro: nenhuma tela tem cor solta. */
+.app {
+  /* rev-04 (09/09/2026): teal mais vivo, vindo da maquete. */
+  --primary: #087B8B;
+  --primary-bright: #0A93A5;
+  --primary-grad: linear-gradient(135deg, #087B8B 0%, #0A93A5 100%);
+  --primary-tint: rgba(8,123,139,0.10);
+  --primary-tint-strong: rgba(8,123,139,0.18);
+  --primary-on: #FFFFFF;
+  --primary-deep: #083E47;
+  --glow: #1EE6F0;
+
+  /* A cor de AÇÃO. É o cyan cheio, com tinta escura por cima — nunca branco,
+     que em cima de #1EE6F0 não tem contraste suficiente para ler. Use no
+     botão principal da tela, um por tela. */
+  --action: #1EE6F0;
+  --action-hover: #74F0F5;
+  --action-on: #063B44;
+
+  --bg: #ECEFF0;
+  --bg-grad:
+    radial-gradient(900px 600px at 112% -10%, rgba(30,230,240,0.16) 0%, rgba(30,230,240,0) 60%),
+    radial-gradient(820px 540px at -12% 18%, rgba(19,96,102,0.08) 0%, rgba(19,96,102,0) 55%),
+    radial-gradient(900px 620px at 55% 115%, rgba(26,124,131,0.10) 0%, rgba(26,124,131,0) 60%);
+  --surface: #FFFFFF;
+  --surface-glass: rgba(255,255,255,0.78);
+  --surface-2: #F1F3F5;
+  --surface-elev: rgba(255,255,255,0.88);
+  --surface-press: rgba(6,40,42,0.05);
+  --glass-border: rgba(255,255,255,0.70);
+  --text: #12343B;
+  /* --text-1 é usado em ~200 pontos; sem este alias ele resolve para nada
+     em qualquer paleta que não o defina, e o texto some. */
+  --text-1: var(--text);
+  --text-2: #466168;
+  --text-3: #7D9296;
+  --text-on-primary: #FFFFFF;
+  --border: #D9E2E3;
+  --border-strong: #BCCACC;
+  --divider: #EDF1F2;
+  --warn: #9A6700;
+  --warn-tint: rgba(154,103,0,0.13);
+  --danger: #C0392B;
+  --danger-tint: rgba(192,57,43,0.11);
+  --info: #1A7C83;
+  --info-tint: rgba(26,124,131,0.11);
+  --success: #1B7A45;
+  --success-tint: rgba(27,122,69,0.12);
+  /* Sombra quase nada: a maquete é plana, quem separa os blocos é a borda. */
+  --shadow-card: 0 1px 2px rgba(6,40,42,0.05), 0 8px 20px -16px rgba(6,40,42,0.16);
+  --shadow-pop: 0 14px 36px -14px rgba(6,40,42,0.20), 0 2px 6px rgba(6,40,42,0.05);
+  --pad-1: 8px; --pad-2: 12px; --pad-3: 16px; --pad-4: 20px; --pad-5: 24px;
+  --gap-1: 8px; --gap-2: 12px; --gap-3: 16px; --gap-4: 20px; --gap-5: 24px;
+  --radius-card: 12px; --radius-card-lg: 16px; --radius-pill: 999px;
+  --radius-input: 8px; --radius-btn: 8px;
+  --tap-h: 56px; --tap-h-sm: 44px;
+  --display-1: 28px; --display-2: 22px; --title: 18px;
+  --body: 15px; --caption: 13px; --micro: 11px;
+}
+
+.app[data-density="compact"] {
+  --pad-1: 6px; --pad-2: 10px; --pad-3: 12px; --pad-4: 14px; --pad-5: 18px;
+  --gap-1: 6px; --gap-2: 8px; --gap-3: 12px; --gap-4: 14px; --gap-5: 18px;
+  --tap-h: 48px; --tap-h-sm: 40px;
+  --radius-card: 10px; --radius-card-lg: 14px;
+  --display-1: 24px; --display-2: 19px; --title: 16px; --body: 14px; --caption: 12px;
+}
+
+.app, .app * { box-sizing: border-box; font-family: var(--font); }
+.app {
+  background-color: var(--bg);
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
+  color: var(--text); width: 100%; height: 100%; font-size: var(--body); touch-action: pan-x pan-y;
+}
+.app button { font-family: var(--font); }
+.app ::selection { background: var(--primary-tint-strong); }
+
+/* ── SVG icon fix: apenas spans com style inline (icon wrappers) viram flex ── */
+.app span[style]:has(> svg) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.app span[style] > svg { display: block; width: 100%; height: 100%; }
+
+/* Fotos e relatórios podem usar pinch-to-zoom */
+.zoomable, .zoomable * { touch-action: auto; }
+
+/* ─── Typography ─── */
+.t-display {
+  font-size: var(--display-1); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+  color: var(--text);
+  background: linear-gradient(115deg, var(--text) 55%, var(--primary) 140%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+/* .t-h1 era usado (Usuários, Visitas, Gestão visual) e não existia: o título
+   saía do tamanho do texto comum. */
+.t-h1 { font-size: var(--display-2); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); }
+.t-h2 { font-size: var(--display-2); font-weight: 700; letter-spacing: -0.015em; line-height: 1.2; color: var(--text); }
+.t-title { font-size: var(--title); font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+.t-body { font-size: var(--body); color: var(--text); }
+.t-caption { font-size: var(--caption); color: var(--text-3); font-weight: 500; }
+.t-micro { font-size: var(--micro); color: var(--text-3); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.t-strong { font-weight: 700; }
+.t-mute { color: var(--text-3); }
+.t-2 { color: var(--text-2); }
+
+/* ─── Cards ─── */
+/* rev-04: o vidro fosco saiu. Superfície sólida, borda fina, sombra quase nada —
+   é o que a maquete pede, e de quebra rola muito melhor em celular fraco, porque
+   backdrop-filter obriga o navegador a repintar o fundo a cada quadro. */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius-card); padding: var(--pad-3);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+}
+.card-flat { background: var(--surface); border-radius: var(--radius-card); padding: var(--pad-3); border: 1px solid var(--border); }
+.card-tint { background: var(--primary-tint); border-radius: var(--radius-card); padding: var(--pad-3); }
+@media (hover: hover) {
+  .card { transition: transform 0.18s ease, box-shadow 0.18s ease; }
+  .card:hover { transform: translateY(-1px); box-shadow: 0 10px 26px -14px rgba(6,40,42,0.24); border-color: var(--border-strong); }
+}
+
+/* ─── Buttons ─── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--tap-h); padding: 0 var(--pad-4); border-radius: var(--radius-btn); font-size: var(--body); font-weight: 700; letter-spacing: 0.01em; border: 0; cursor: pointer; user-select: none; white-space: nowrap; transition: transform 0.1s ease, background 0.12s ease, box-shadow 0.15s ease, filter 0.12s ease; }
+.btn:active { transform: scale(0.97); filter: brightness(0.96); }
+.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--primary-tint-strong); }
+/* A sombra deste botão era LARANJA (rgba(234,88,12,.55)) e a do texto, marrom —
+   sobra da marca antiga, brigando com o teal do app inteiro. */
+.btn-primary { background: var(--primary); color: var(--primary-on); }
+.btn-primary:hover { background: var(--primary-bright); }
+/* O botão de AÇÃO: cyan cheio, tinta escura. Um por tela, no que a pessoa
+   veio fazer ali. Fora dele, use .btn-primary. */
+.btn-action { background: var(--action); color: var(--action-on); }
+.btn-action:hover { background: var(--action-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
+.btn-secondary:hover { background: var(--surface-2); }
+.btn-ghost { background: transparent; color: var(--text); }
+.btn-block { width: 100%; }
+.btn-sm { height: var(--tap-h-sm); padding: 0 var(--pad-3); font-size: var(--caption); border-radius: 7px; }
+/* Botão desabilitado tem que parecer desabilitado. Não havia regra nenhuma: o
+   "Próximo" com o campo vazio parecia pronto e o toque não fazia nada, sem
+   aviso. Ninguém precisa pôr opacidade na mão em cada tela. */
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:disabled:active { transform: none; filter: none; }
+.btn-primary:disabled:hover { background: var(--primary); }
+.btn-action:disabled:hover { background: var(--action); }
+.btn-secondary:disabled:hover { background: var(--surface); }
+
+/* ─── Chips ─── */
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--text-2); border: 1px solid var(--border); }
+.chip.success { background: var(--success-tint); color: var(--success); border-color: transparent; }
+.chip.warn { background: var(--warn-tint); color: var(--warn); border-color: transparent; }
+.chip.danger { background: var(--danger-tint); color: var(--danger); border-color: transparent; }
+.chip.info { background: var(--info-tint); color: var(--info); border-color: transparent; }
+.chip.primary { background: var(--primary-tint); color: var(--primary); border-color: transparent; }
+
+/* ─── Barra de baixo: pílula escura flutuante (rev-04) ─── */
+/* Era vidro claro sobre fundo claro, e sumia. Escura, ela ancora a tela e o
+   item ativo em cyan fica óbvio de longe. */
+.botnav {
+  position: relative; left: auto; right: auto; bottom: auto; flex-shrink: 0;
+  background: var(--primary-deep);
+  border: 0;
+  border-radius: var(--radius-pill);
+  margin: 0 10px calc(8px + env(safe-area-inset-bottom));
+  box-shadow: 0 10px 28px -10px rgba(6,40,42,0.45);
+  padding: 7px;
+  display: flex; justify-content: space-around; z-index: 30;
+}
+.botnav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; padding: 7px 4px; border-radius: var(--radius-pill); background: transparent; border: 0; color: rgba(255,255,255,0.66); font-size: 10px; font-weight: 600; cursor: pointer; transition: color 0.12s, background 0.15s; }
+.botnav-item.active { color: var(--action-on); background: var(--action); }
+.botnav-item svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ─── Page ─── */
+.page { display: flex; flex-direction: column; min-height: 100%; padding: 0 0 16px; background: transparent; animation: page-in 0.26s cubic-bezier(0.2, 0.8, 0.2, 1); }
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.page-pad { padding: 0 var(--pad-4); }
+.app-header { padding: 8px var(--pad-4) var(--pad-3); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* ─── Home do desktop: uma tela só ───
+   3 colunas x 3 caixas do mesmo tamanho. Nem a página nem as caixas rolam: o
+   conteúdo é cortado para caber, e cada card mostra poucos itens com um "+N
+   mais" no fim. Barra de rolagem dentro da caixa escondia informação sem avisar
+   que existia. minmax(0,...) é o que impede um conteúdo grande de esticar a
+   linha e quebrar a simetria. */
+.home-grid {
+  flex: 1; min-height: 0;
+  display: grid; gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.home-col {
+  min-height: 0;
+  display: grid; gap: 14px;
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+.home-col > * { min-height: 0; overflow: hidden; }
+/* O hover levanta o card 2px; com overflow no pai isso vira barra de rolagem. */
+.home-col > .card:hover { transform: none; }
+
+/* ─── List rows ─── */
+.row { display: flex; align-items: center; gap: var(--gap-3); padding: var(--pad-3); border-radius: var(--radius-card); background: var(--surface); border: 1px solid var(--border); }
+.divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border-strong), transparent); margin: var(--pad-3) 0; }
+
+/* ─── Avatar ─── */
+.av { width: 36px; height: 36px; border-radius: 50%; background: var(--primary-tint); color: var(--primary); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1.5px solid var(--surface); box-shadow: 0 0 0 2px var(--primary-tint-strong); }
+.av-sm { width: 26px; height: 26px; font-size: 10px; }
+.av-stack { display: flex; }
+.av-stack .av + .av { margin-left: -10px; }
+
+/* ─── Dot ─── */
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
+.dot.success { background: var(--success); }
+.dot.warn { background: var(--warn); }
+.dot.danger { background: var(--danger); }
+.dot.primary { background: var(--primary); }
+
+/* ─── Action buttons (RDO) ─── */
+.action-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.action-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 64px; border-radius: 16px; border: 1.5px solid var(--border-strong); background: var(--surface-glass); color: var(--text-2); font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.12s; }
+.action-btn:active { transform: scale(0.97); }
+.action-btn.is-on.feita { border-color: var(--success); background: var(--success-tint); color: var(--success); }
+.action-btn.is-on.parcial { border-color: var(--warn); background: var(--warn-tint); color: var(--warn); }
+.action-btn.is-on.nao_feita { border-color: var(--danger); background: var(--danger-tint); color: var(--danger); }
+.action-btn svg { width: 22px; height: 22px; }
+
+/* ─── Tap ─── */
+.tap { cursor: pointer; user-select: none; transition: transform 0.12s ease, opacity 0.12s ease; }
+.tap:active { opacity: 0.85; transform: scale(0.985); }
+
+/* ─── Kanban ─── */
+.kanban-col { background: var(--surface-2); border-radius: var(--radius-card); padding: var(--pad-2); border: 0.5px solid var(--border); }
+.kanban-card { background: var(--surface); border-radius: 10px; padding: 10px 12px; border: 1px solid var(--border); margin-bottom: 8px; box-shadow: 0 1px 2px rgba(6,40,42,0.05); }
+
+/* ─── Form inputs ─── */
+.ipt { width: 100%; min-height: 48px; padding: 12px 14px; background: var(--surface-glass); color: var(--text); border: 1px solid var(--border); border-radius: 14px; font-size: 15px; font-family: inherit; font-weight: 500; line-height: 1.4; outline: none; box-sizing: border-box; -webkit-appearance: none; appearance: none; transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease; }
+textarea.ipt { resize: none; min-height: 92px; padding-top: 12px; }
+.ipt::placeholder { color: var(--text-3); font-weight: 400; }
+.ipt:focus { border-color: var(--primary-bright); background: var(--surface); box-shadow: 0 0 0 3px var(--primary-tint); }
+
+/* ─── Slider ─── */
+input[type="range"].slider { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 999px; background: var(--border); outline: none; }
+input[type="range"].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); border: 4px solid var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,0.2); cursor: pointer; }
+
+/* ─── Search ─── */
+.search { display: flex; align-items: center; gap: 8px; background: var(--surface); border-radius: var(--radius-input); padding: 0 14px; height: 46px; border: 1px solid var(--border); }
+.search input { flex: 1; border: 0; background: transparent; font-size: 15px; color: var(--text); outline: none; font-family: inherit; }
+.search input::placeholder { color: var(--text-3); }
+
+/* ─── Sheet ─── */
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(8,20,15,0.45); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); z-index: 40; display: flex; align-items: center; justify-content: center; padding: 16px; animation: sheet-fade .18s ease; }
+.sheet { background: var(--surface); width: 100%; border-radius: var(--radius-card-lg); border: 1px solid var(--border); padding: 16px var(--pad-4) 18px; max-height: 88%; overflow-y: auto; display: flex; flex-direction: column; gap: var(--gap-3); box-shadow: 0 24px 64px rgba(0,0,0,0.28), inset 0 1px 0 var(--glass-border); animation: sheet-pop .26s cubic-bezier(.2,.8,.2,1); }
+@keyframes sheet-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes sheet-pop { from { transform: scale(.96); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+
+/* ─── Activity cards ─── */
+.act-card { background: var(--surface); border-radius: 18px; padding: var(--pad-3); border: 0.5px solid var(--border); box-shadow: var(--shadow-card); display: flex; flex-direction: column; gap: var(--gap-3); }
+.act-card.done { background: var(--success-tint); border-color: transparent; }
+.act-card.partial { background: var(--warn-tint); border-color: transparent; }
+.act-card.skipped { background: var(--danger-tint); border-color: transparent; }
+
+/* ─── Image placeholder ─── */
+.imgph { background: repeating-linear-gradient(135deg, var(--surface-2) 0 8px, var(--bg) 8px 16px); border-radius: 12px; border: 1px dashed var(--border-strong); display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 11px; font-weight: 600; }
+
+/* ─── Toggle ─── */
+.toggle { width: 46px; height: 28px; border-radius: 999px; background: var(--border); position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.18s; }
+.toggle.on { background: var(--primary); background-image: var(--primary-grad); }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.18s; }
+.toggle.on::after { transform: translateX(18px); }
+
+/* ─── PDF preview ─── */
+.pdf-preview { background: white; border-radius: 14px; border: 1px solid var(--border); padding: 16px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10.5px; line-height: 1.45; color: #444; height: 220px; overflow: hidden; position: relative; }
+.pdf-preview::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(to bottom, rgba(255,255,255,0), white); }
+
+/* ─── Tag ─── */
+.tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: 999px; font-size: 11px; font-weight: 600; color: var(--text-2); background: var(--surface-2); border: 0.5px solid var(--border); }
+
+/* ─── Section header ─── */
+.section-h { display: flex; align-items: baseline; justify-content: space-between; padding: var(--pad-3) var(--pad-4) var(--pad-2); }
+.section-h .title { font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); display: inline-flex; align-items: center; gap: 8px; }
+.section-h .title::before { content: ''; width: 16px; height: 3px; border-radius: 999px; background: var(--primary-grad, var(--primary)); }
+.section-h .more { font-size: 12px; color: var(--primary); font-weight: 600; cursor: pointer; }
+
+/* ─── Stack helpers ─── */
+.stack { display: flex; flex-direction: column; }
+.stack-1 { gap: var(--gap-1); }
+.stack-2 { gap: var(--gap-2); }
+.stack-3 { gap: var(--gap-3); }
+.stack-4 { gap: var(--gap-4); }
+.row-flex { display: flex; align-items: center; gap: var(--gap-2); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--gap-2); }
+.scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.app .scroll-area::-webkit-scrollbar { display: none; }
+.app .scroll-area { scrollbar-width: none; }
+
+/* ─── Login ─── */
+
+.login-shell {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* Painel esquerdo (marca) */
+/* Petróleo da paleta nova. Era um marrom/laranja da marca antiga, bem na
+   PRIMEIRA tela que o aluno vê. */
+.login-brand {
+  background: linear-gradient(160deg, var(--primary-deep) 0%, var(--primary) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 56px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.login-brand-photo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: linear-gradient(150deg, #0A383B 0%, #136066 45%, #1A7C83 100%);
+  opacity: 1;
+}
+
+.login-brand-deco {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 110% 110%, rgba(30,230,240,0.20) 0%, transparent 55%),
+    radial-gradient(ellipse at -10% -10%, rgba(8,62,71,0.45) 0%, transparent 50%);
+}
+
+.login-brand-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Ícone do app + nome da empresa (src/marca.js), em vez de uma imagem de
+   logo que precisava vir no pacote. */
+.login-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 32px;
+  min-width: 0;
+}
+
+.login-brand-logo img {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.login-brand-logo span {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.login-brand-tagline {
+  font-size: 15px;
+  color: rgba(255,255,255,0.65);
+  line-height: 1.6;
+  margin: 0 0 28px;
+}
+
+.login-brand-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-brand-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(214,247,249,0.92);
+}
+
+.login-brand-feature svg {
+  width: 16px;
+  height: 16px;
+  opacity: 0.8;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.login-brand-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2;
+  /* Era laranja (#F97316) — a marca antiga, na PRIMEIRA tela que o aluno vê. */
+  background: linear-gradient(90deg, var(--primary), var(--action), var(--primary));
+  opacity: 0.9;
+}
+
+/* Painel direito (formulário) */
+.login-main {
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 40px 36px;
+  overflow-y: auto;
+}
+
+.login-main-inner {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.login-greeting {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.login-greeting-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 6px;
+}
+
+.login-greeting-sub {
+  font-size: 13px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.login-card {
+  background: var(--surface);
+  border-radius: var(--radius-card-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-pop);
+  border: 0.5px solid var(--border);
+}
+
+.login-error {
+  background: var(--danger-tint);
+  color: var(--danger);
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.login-footer {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 12px;
+  color: var(--text-3);
+  line-height: 1.5;
+}
+
+@keyframes login-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.login-enter {
+  animation: login-fade-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+/* ─── Login mobile (< 901px): coluna, logo no topo + form abaixo ─── */
+@media (max-width: 900px) {
+  .login-shell {
+    display: flex;
+    flex-direction: column;        /* ← fix: empilha vertical */
+    height: 100dvh;
+    overflow-y: auto;
+    background: var(--surface);
+    grid-template-columns: unset;
+  }
+
+  .login-brand {
+    display: none;
+  }
+
+  /* Faixa do topo no celular: petróleo da paleta nova (era marrom). */
+  .login-mobile-header {
+    background: linear-gradient(160deg, var(--primary-deep) 0%, var(--primary) 100%);
+    padding: max(env(safe-area-inset-top, 20px), 28px) 24px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .login-mobile-header img {
+    width: 52px;
+    height: 52px;
+    border-radius: 13px;
+    flex-shrink: 0;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  }
+
+  .login-mobile-header span {
+    font-size: 21px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #fff;
+    line-height: 1.15;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .login-main {
+    flex: 1;
+    padding: 28px 20px max(env(safe-area-inset-bottom, 20px), 32px);
+    background: var(--surface);
+    justify-content: flex-start;
+    overflow-y: auto;
+  }
+
+  .login-main-inner {
+    max-width: none;
+  }
+
+}
+
+@media (min-width: 901px) {
+  .login-mobile-header {
+    display: none;
+  }
+
+  /* Desktop: fundo em tela cheia + formulário como popup central */
+  .login-shell {
+    position: relative;
+  }
+
+  .login-brand {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  .login-brand-content {
+    max-width: 380px;
+  }
+
+  .login-main {
+    position: relative;
+    z-index: 1;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    background: transparent;
+    overflow-y: auto;
+  }
+
+  .login-main::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: rgba(8, 28, 21, 0.42);
+  }
+
+  .login-main-inner {
+    width: 100%;
+    max-width: 400px;
+    margin: 0;
+    padding: 32px 28px 24px;
+    background: var(--surface);
+    border-radius: 20px;
+    box-shadow:
+      0 24px 64px rgba(0, 0, 0, 0.28),
+      0 8px 24px rgba(0, 0, 0, 0.12);
+    border: 0.5px solid var(--border);
+  }
+
+  .login-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  .login-greeting {
+    margin-bottom: 20px;
+  }
+
+  .login-footer {
+    margin-top: 16px;
+  }
+
+  @media (max-width: 1100px) {
+    .login-brand-content {
+      visibility: hidden;
+    }
+  }
+}
+
+/* ─── Confirm dialog (centered) ─── */
+.confirm-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-bottom));
+  background: rgba(15, 17, 20, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: sheet-fade 0.2s ease;
+  box-sizing: border-box;
+}
+
+.confirm-dialog {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border-radius: var(--radius-card-lg);
+  padding: var(--pad-5);
+  box-shadow: var(--shadow-pop);
+  border: 0.5px solid var(--border);
+  animation: sheet-pop 0.26s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.confirm-dialog-title {
+  font-size: var(--title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 0 0 10px;
+}
+
+.confirm-dialog-message {
+  font-size: var(--body);
+  line-height: 1.5;
+  color: var(--text-2);
+  margin: 0 0 var(--pad-5);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirm-dialog-actions .btn {
+  flex: 1;
+  min-width: 112px;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
+/* ── Layout desktop ─────────────────────────────────────────────────────── */
+.app[data-desktop="1"] .page {
+  padding-bottom: 28px;
+}
+.app[data-desktop="1"] .page-pad {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+.app[data-desktop="1"] .botnav { display: none; }
+
+/* Desktop: EngHome cards em grid 2×2 */
+.app[data-desktop="1"] .desktop-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.app[data-desktop="1"] .desktop-cards-grid > * {
+  min-width: 0;
+}
+/* Desktop: remove limit na largura interna das páginas */
+.app[data-desktop="1"] .scroll-area > * {
+  max-width: none;
+}
+

@@ -11,7 +11,8 @@
     "nome",
     "ordem",
     "created_at",
-    "pavimento"
+    "pavimento",
+    "obra_id"
   ],
   "cronograma_itens": [
     "id",
@@ -31,7 +32,8 @@
     "observacao",
     "created_at",
     "updated_at",
-    "datas_ajustadas"
+    "datas_ajustadas",
+    "obra_id"
   ],
   "rdos": [
     "id",
@@ -40,7 +42,8 @@
     "submetido_em",
     "submetido_por_nome",
     "created_at",
-    "efetivo_draft"
+    "efetivo_draft",
+    "obra_id"
   ],
   "atividades_rdo": [
     "id",
@@ -55,7 +58,8 @@
     "data_inicio",
     "data_conclusao",
     "status_por_dia",
-    "cronograma_item_id"
+    "cronograma_item_id",
+    "obra_id"
   ],
   "empreiteiros": [
     "id",
@@ -94,7 +98,8 @@
     "fornecedor_nome",
     "created_at",
     "updated_at",
-    "valor_contrato"
+    "valor_contrato",
+    "obra_id"
   ],
   "contratacoes_comentarios": [
     "id",
@@ -104,14 +109,16 @@
     "resolvido",
     "autor_nome",
     "created_at",
-    "updated_at"
+    "updated_at",
+    "obra_id"
   ],
   "cronograma_avanco": [
     "id",
     "item_id",
     "data_ref",
     "percentual",
-    "created_at"
+    "created_at",
+    "obra_id"
   ],
   "efetivo_rdo": [
     "id",
@@ -120,7 +127,8 @@
     "empreiteiro",
     "atividade_descricao",
     "created_at",
-    "colaborador_id"
+    "colaborador_id",
+    "obra_id"
   ],
   "equipamentos": [
     "id",
@@ -134,7 +142,8 @@
     "observacoes",
     "created_at",
     "data_devolucao",
-    "data_devolucao_agendada"
+    "data_devolucao_agendada",
+    "obra_id"
   ],
   "ocorrencias": [
     "id",
@@ -147,7 +156,8 @@
     "created_at",
     "empresa",
     "turno",
-    "registrado_por"
+    "registrado_por",
+    "obra_id"
   ],
   "pendencias": [
     "id",
@@ -171,7 +181,8 @@
     "resolvida_por",
     "foto_problema",
     "foto_solucao",
-    "pavimento"
+    "pavimento",
+    "obra_id"
   ],
   "planta_etapas": [
     "id",
@@ -181,7 +192,8 @@
     "ativa",
     "meta",
     "unidade",
-    "created_at"
+    "created_at",
+    "obra_id"
   ],
   "plantas_visuais": [
     "id",
@@ -191,7 +203,8 @@
     "altura",
     "created_at",
     "pavimento",
-    "textos"
+    "textos",
+    "obra_id"
   ],
   "planta_marcacoes": [
     "id",
@@ -210,7 +223,8 @@
     "espessura",
     "lote",
     "nota",
-    "lote_cor"
+    "lote_cor",
+    "obra_id"
   ],
   "projetos": [
     "id",
@@ -230,7 +244,8 @@
     "etapa",
     "revisao",
     "prazo_dias",
-    "prazo_tipo"
+    "prazo_tipo",
+    "obra_id"
   ],
   "projetos_comentarios": [
     "id",
@@ -241,12 +256,14 @@
     "created_at",
     "updated_at",
     "tipo",
-    "data"
+    "data",
+    "obra_id"
   ],
   "projetos_dependencias": [
     "projeto_id",
     "depende_de_id",
-    "created_at"
+    "created_at",
+    "obra_id"
   ],
   "rdo_fotos": [
     "id",
@@ -262,7 +279,8 @@
     "url",
     "storage_path",
     "autor_nome",
-    "created_at"
+    "created_at",
+    "obra_id"
   ],
   "relatorio_semanal_config": [
     "id",
@@ -286,7 +304,8 @@
     "grupo_id",
     "ata_url",
     "ata_nome",
-    "prevista"
+    "prevista",
+    "obra_id"
   ],
   "visitas": [
     "id",
@@ -298,7 +317,8 @@
     "grupo_id",
     "ata_url",
     "ata_nome",
-    "prevista"
+    "prevista",
+    "obra_id"
   ],
   "visitas_dir_empresas": [
     "id",
@@ -310,6 +330,25 @@
     "empresa_nome",
     "nome",
     "cargo",
+    "created_at"
+  ],
+  "obras": [
+    "id",
+    "nome",
+    "codigo",
+    "localizacao",
+    "cliente",
+    "arquiteto",
+    "data_inicio",
+    "capa_padrao_url",
+    "assinaturas",
+    "ativa",
+    "created_at",
+    "updated_at"
+  ],
+  "obra_membros": [
+    "obra_id",
+    "user_id",
     "created_at"
   ]
 }

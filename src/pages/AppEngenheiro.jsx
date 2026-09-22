@@ -21,6 +21,9 @@ import { CronogramaScreen } from '../screens/cronograma';
 import { registrarInicioRealDoRDO } from '../lib/cronograma';
 import { RDOHistoricoScreen } from '../screens/rdo-historico';
 import { RevisaoColaboradoresPopup } from '../screens/revisao-colaboradores';
+import { ObrasScreen } from '../screens/obras';
+import { ConfiguracoesScreen } from '../screens/configuracoes';
+import { useObraSelecionada } from '../lib/obra-selecionada';
 import { MARCA } from '../marca.js';
 import { hojeLocal } from '../lib/date';
 import { semanaDe, atividadesDoDia, chaveDoDia } from '../lib/atividades-do-dia';
@@ -64,8 +67,10 @@ function rotuloPapel(profile) {
 // A barra lateral do desktop. Mora aqui fora de proposito: declarada dentro do
 // AppEngenheiro, ela virava um componente novo a cada render e era remontada
 // do zero toda vez.
-function BarraLateral({ expandida, setExpandida, nav, ativo, goto, profile, abrirMenu }) {
+function BarraLateral({ expandida, setExpandida, nav, ativo, goto, profile, abrirMenu, obraAtual, obras, trocarObra }) {
   const ini = loginInitial(profile);
+  const [obraMenuOpen, setObraMenuOpen] = useState(false);
+  const podeTrocar = obras.length > 1;
   return (
     <div style={{
       width: expandida ? 220 : 64,
@@ -86,9 +91,39 @@ function BarraLateral({ expandida, setExpandida, nav, ativo, goto, profile, abri
         borderBottom: '0.5px solid var(--border)', flexShrink: 0,
       }}>
         {expandida && (
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--text-1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{MARCA.obra}</div>
+          <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+            <button
+              onClick={() => podeTrocar && setObraMenuOpen(v => !v)}
+              title={podeTrocar ? 'Trocar de obra' : undefined}
+              style={{
+                display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', padding: 0,
+                fontFamily: 'inherit', cursor: podeTrocar ? 'pointer' : 'default',
+                fontSize: 13, fontWeight: 800, color: 'var(--text-1)',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+              {obraAtual?.nome || MARCA.obra}{podeTrocar ? ' ▾' : ''}
+            </button>
             <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600, letterSpacing: '0.05em' }}>{rotuloPapel(profile)}</div>
+            {obraMenuOpen && podeTrocar && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 50,
+                width: 220, background: 'var(--surface)', borderRadius: 12, border: '0.5px solid var(--border)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.18)', padding: 6,
+              }}>
+                {obras.map(o => (
+                  <button key={o.id} onClick={() => { trocarObra(o.id); setObraMenuOpen(false); }}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 8,
+                      border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5,
+                      fontWeight: o.id === obraAtual?.id ? 800 : 600,
+                      color: o.id === obraAtual?.id ? 'var(--primary)' : 'var(--text-1)',
+                      background: o.id === obraAtual?.id ? 'var(--primary-tint)' : 'transparent',
+                    }}>
+                    {o.nome}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <button
@@ -179,6 +214,7 @@ function BarraLateral({ expandida, setExpandida, nav, ativo, goto, profile, abri
 }
 
 export default function AppEngenheiro({ profile }) {
+  const { obraAtual, obras, trocarObra } = useObraSelecionada();
   const [route, setRoute] = useState({ screen: 'home', params: {} });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetDate, setSheetDate] = useState(null);
@@ -470,6 +506,7 @@ export default function AppEngenheiro({ profile }) {
     'rdo-eng': 'home', 'rdo-eng-assign': 'home', 'rdo-eng-activity': 'home',
     'rdo-eng-summary': 'home', 'rdo-eng-occurrence': 'home', 'rdo-eng-classic': 'home',
     'checklist-detail': 'checklist', 'checklist-new': 'checklist',
+    'obras': 'configuracoes', 'admin-usuarios': 'configuracoes',
   };
   const activeNav = navMap[route.screen] || route.screen;
 
@@ -537,6 +574,8 @@ export default function AppEngenheiro({ profile }) {
     case 'galeria':          body = <GaleriaFotos goto={goto} voltarPara="home" />; break;
     case 'gestao-visual':    body = <TelaLazy><GestaoVisual /></TelaLazy>; break;
     case 'admin-usuarios':   body = <AdminUsuarios goto={goto} />; break;
+    case 'obras':            body = <ObrasScreen goto={goto} voltarPara="configuracoes" />; break;
+    case 'configuracoes':    body = <ConfiguracoesScreen goto={goto} profile={profile} />; break;
     default:                 body = <EngHome goto={goto} dailyState={dailyState} />;
   }
 
@@ -550,7 +589,8 @@ export default function AppEngenheiro({ profile }) {
 
       {/* Sidebar desktop */}
       {isDesktop && <BarraLateral expandida={sidebarExpanded} setExpandida={setSidebarExpanded}
-        nav={nav} ativo={activeNav} goto={goto} profile={profile} abrirMenu={() => setUserMenuOpen(true)} />}
+        nav={nav} ativo={activeNav} goto={goto} profile={profile} abrirMenu={() => setUserMenuOpen(true)}
+        obraAtual={obraAtual} obras={obras} trocarObra={trocarObra} />}
 
       {/* Área principal */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
@@ -641,13 +681,35 @@ export default function AppEngenheiro({ profile }) {
 
             <div style={{ height: 1, background: 'var(--border)' }}/>
 
+            <button onClick={() => { setUserMenuOpen(false); goto('configuracoes'); }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                border: '1px solid var(--border)', background: 'var(--surface-2)',
+                color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left',
+              }}>
+              <span style={{ width: 18, height: 18, flexShrink: 0 }}>{Icon.cog}</span>
+              <span style={{ flex: 1 }}>Configurações</span>
+              <span style={{ width: 14, height: 14, color: 'var(--text-3)' }}>{Icon.chevR}</span>
+            </button>
 
-            {/* Painel de admin: só quem tem is_admin no perfil enxerga.
-                A checagem de verdade é na Edge Function — isto aqui só evita
-                mostrar um botão que daria erro. */}
+            {/* Painel de admin e Obras: só quem tem is_admin no perfil enxerga.
+                A checagem de verdade é na Edge Function e na RLS — isto aqui só
+                evita mostrar um botão que daria erro. */}
             {profile?.is_admin && (
               <>
                 <div style={{ height: 1, background: 'var(--border)' }}/>
+                <button onClick={() => { setUserMenuOpen(false); goto('obras'); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px', borderRadius: 12, cursor: 'pointer',
+                    border: '1px solid var(--border)', background: 'var(--surface-2)',
+                    color: 'var(--text-1)', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textAlign: 'left',
+                  }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>🏗️</span>
+                  <span style={{ flex: 1 }}>Gerenciar obras</span>
+                  <span style={{ width: 14, height: 14, color: 'var(--text-3)' }}>{Icon.chevR}</span>
+                </button>
                 <button onClick={() => { setUserMenuOpen(false); goto('admin-usuarios'); }}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 12,

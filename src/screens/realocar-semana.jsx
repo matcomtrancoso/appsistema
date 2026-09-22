@@ -81,7 +81,7 @@ export function RealocarSemanaPopup({ baseMonday, offsetInicial = 0, onClose }) 
       if (eSel) throw eSel;
       if (!rdo) {
         const { data, error: eIns } = await supabase.from('rdos')
-          .upsert({ data: destinoISO }, { onConflict: 'data' }).select().single();
+          .upsert({ data: destinoISO }, { onConflict: 'obra_id,data' }).select().single();
         if (eIns) throw eIns;
         rdo = data;
       }

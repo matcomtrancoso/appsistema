@@ -578,7 +578,7 @@ export function MestreOccurrence({ goto, rdoId, profile }) {
 // ── M08: Equipamentos ─────────────────────────────────────────────────────
 
 // ── M09: Mais ─────────────────────────────────────────────────────────────
-export function MestreMais({ goto }) {
+export function MestreMais({ goto, profile }) {
   return (
     <div className="page">
       <PageHeader eyebrow="MENU" title="Mais" />
@@ -586,6 +586,10 @@ export function MestreMais({ goto }) {
         <MaisRow icon={Icon.alert} label="Pendências" sub="Checklists e pendências da obra" onClick={() => goto('checklist')} />
         <MaisRow icon={'📷'} label="Galeria de fotos" sub="Fotos do RDO por dia, pavimento e ambiente" onClick={() => goto('galeria')} />
         <MaisRow icon={Icon.users} label="Efetivo histórico" sub="Histórico de colaboradores no canteiro" onClick={() => goto('efetivo')} />
+        <MaisRow icon={Icon.cog} label="Configurações" sub="Obra atual e trocar de obra" onClick={() => goto('configuracoes')} />
+        {profile?.is_admin && (
+          <MaisRow icon={'🏗️'} label="Gerenciar obras" sub="Criar, editar e liberar acesso por obra" onClick={() => goto('obras')} />
+        )}
       </div>
     </div>
   );

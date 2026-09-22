@@ -48,6 +48,16 @@ export const DADOS_DEMO = {
     arquiteto: 'Estúdio Norte Arquitetura', logo_url: null,
   }],
 
+  // Fatia 2 do multi-obra: uma obra só no demo (o modo demo ignora filtro, então
+  // uma segunda obra fictícia aqui não provaria nada — a troca de verdade se
+  // testa no banco real, com impersonação. Ver CLAUDE.md).
+  obras: [{
+    id: 'demo-obra-1', nome: 'Residencial Aurora (demo)', codigo: 'OBRA-01',
+    localizacao: 'Rua das Palmeiras, 100 — São Paulo/SP', cliente: 'Cliente Exemplo Ltda.',
+    arquiteto: 'Estúdio Norte Arquitetura', data_inicio: maisDias(-90),
+    capa_padrao_url: null, assinaturas: [], ativa: true,
+  }],
+
   rdos: [
     { id: RDO_HOJE, data: iso(hoje), submetido: false, submetido_por_nome: null, efetivo_draft: [] },
     { id: 'r2', data: maisDias(-1), submetido: true, submetido_por_nome: 'João', efetivo_draft: [] },

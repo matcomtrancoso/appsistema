@@ -47,7 +47,7 @@ async function garantirRdoId(rdoId, dataAlvo) {
   const dia = dataAlvo || hojeLocal();
   const { data: existente } = await supabase.from('rdos').select('id').eq('data', dia).maybeSingle();
   if (existente) return existente.id;
-  const { data: novo } = await supabase.from('rdos').upsert({ data: dia }, { onConflict: 'data' }).select().single();
+  const { data: novo } = await supabase.from('rdos').upsert({ data: dia }, { onConflict: 'obra_id,data' }).select().single();
   return novo?.id || null;
 }
 

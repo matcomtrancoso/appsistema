@@ -1,6 +1,7 @@
 import { useEffect, useState, Component, lazy, Suspense } from 'react';
-import { supabase, ativarModoVisitante } from './lib/supabase';
+import { supabase, ativarModoVisitante, definirObraId } from './lib/supabase';
 import { ObraProvider } from './lib/ObraContext';
+import { ObraSelecionadaProvider, useObraSelecionada } from './lib/obra-selecionada';
 import Login from './pages/Login';
 
 // Ninguém "fecha" um app no celular — só troca de tela. Quando a pessoa volta
@@ -63,6 +64,78 @@ function TelaCarregando({ texto = 'Carregando…' }) {
       <div className="boot-spinner" />
       <div className="boot-text">{texto}</div>
     </div>
+  );
+}
+
+// Quem nunca foi liberado em nenhuma obra (usuário novo, antes do admin
+// vincular) cai aqui em vez de ver o app quebrado tentando ler dado sem obra.
+function TelaSemObra() {
+  return (
+    <div className="boot-screen">
+      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #12343B)' }}>
+        Você ainda não tem acesso a nenhuma obra
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--text-3, #7D9296)', maxWidth: 300, textAlign: 'center' }}>
+        Peça ao administrador para te liberar em uma obra.
+      </div>
+      <button
+        onClick={() => supabase.auth.signOut({ scope: 'local' })}
+        style={{
+          marginTop: 4, height: 46, padding: '0 28px',
+          borderRadius: 12, border: 'none', cursor: 'pointer',
+          background: 'var(--primary, #087B8B)', color: '#fff',
+          fontSize: 15, fontWeight: 800,
+        }}
+      >
+        Sair
+      </button>
+    </div>
+  );
+}
+
+// Escolhe a casca certa (mestre/engenharia/visitante) só depois que a obra
+// atual já é conhecida. O `key={obraId}` remonta a árvore inteira ao trocar
+// de obra: sem isso, telas com estado próprio (RDO aberto, formulário em
+// andamento…) continuariam mostrando — ou pior, salvando em — a obra anterior.
+function ConteudoDoApp({ profile }) {
+  const { obraId, obras, carregando, travou, erro } = useObraSelecionada();
+
+  if (erro) {
+    return (
+      <div className="boot-screen">
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--danger, #DC2626)', maxWidth: 300, textAlign: 'center' }}>{erro}</div>
+        <button onClick={() => window.location.reload()} style={{ marginTop: 8, height: 46, padding: '0 28px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--primary)', color: '#fff', fontSize: 15, fontWeight: 800 }}>
+          Recarregar
+        </button>
+      </div>
+    );
+  }
+  if (carregando) {
+    // Mesmo padrão do "Carregando perfil…": sem um prazo, uma consulta que
+    // nunca responde (sem dar erro) prende a pessoa no spinner para sempre.
+    if (!travou) return <TelaCarregando texto="Carregando a obra…" />;
+    return (
+      <div className="boot-screen">
+        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text, #12343B)' }}>Está demorando demais</div>
+        <div style={{ fontSize: 13, color: 'var(--text-3, #7D9296)' }}>Confira a conexão e recarregue a página.</div>
+        <button onClick={() => window.location.reload()} style={{ marginTop: 4, height: 46, padding: '0 28px', borderRadius: 12, border: 'none', cursor: 'pointer', background: 'var(--primary, #087B8B)', color: '#fff', fontSize: 15, fontWeight: 800 }}>
+          Recarregar
+        </button>
+      </div>
+    );
+  }
+  if (obras.length === 0) return <TelaSemObra />;
+
+  // Visitante usa a casca da engenharia (enxerga tudo), mas o cliente do
+  // Supabase já está em modo somente leitura e o banco recusa escrita.
+  const Shell = profile.role === 'mestre' ? AppMestre : AppEngenheiro;
+  return (
+    <>
+      {profile.role === 'visitante' && <FaixaVisitante />}
+      <ObraProvider profile={profile} key={obraId}>
+        <Shell profile={profile} />
+      </ObraProvider>
+    </>
   );
 }
 
@@ -148,6 +221,10 @@ export default function App() {
         }
       } else {
         setProfile(null);
+        // Aparelho compartilhado (chão de obra, recepção): sem isto, a próxima
+        // pessoa a entrar herdava a obra de quem saiu até o ObraSelecionadaProvider
+        // dela carregar e sobrescrever — uma janela pequena, mas real.
+        definirObraId(null);
       }
     });
 
@@ -192,11 +269,17 @@ export default function App() {
     );
   }
 
-  if (profile.role === 'mestre')      return <ErrorBoundary><Suspense fallback={<TelaCarregando />}><ObraProvider profile={profile}><AppMestre profile={profile} /></ObraProvider></Suspense></ErrorBoundary>;
-  // Visitante usa a casca da engenharia (enxerga tudo), mas o cliente do
-  // Supabase já está em modo somente leitura e o banco recusa escrita.
-  if (profile.role === 'visitante')   return <ErrorBoundary><Suspense fallback={<TelaCarregando />}><ObraProvider profile={profile}><FaixaVisitante /><AppEngenheiro profile={profile} /></ObraProvider></Suspense></ErrorBoundary>;
-  if (profile.role === 'engenheiro')  return <ErrorBoundary><Suspense fallback={<TelaCarregando />}><ObraProvider profile={profile}><AppEngenheiro profile={profile} /></ObraProvider></Suspense></ErrorBoundary>;
+  if (['mestre', 'visitante', 'engenheiro'].includes(profile.role)) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<TelaCarregando />}>
+          <ObraSelecionadaProvider profile={profile}>
+            <ConteudoDoApp profile={profile} />
+          </ObraSelecionadaProvider>
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <div style={{

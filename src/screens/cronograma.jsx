@@ -656,7 +656,7 @@ function ImportarPopup({ onImportado, onCancel }) {
       };
     });
     const { error } = await supabase
-      .from('cronograma_itens').upsert(linhas, { onConflict: 'wbs_id' });
+      .from('cronograma_itens').upsert(linhas, { onConflict: 'obra_id,wbs_id' });
     setSalvando(false);
     if (error) {
       console.error('Erro ao importar cronograma:', error);

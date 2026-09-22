@@ -1210,7 +1210,7 @@ export function EngPlanejar({ openSheet, planKey = 0, isDesktop = false }) {
       let { data: rdo } = await supabase.from('rdos').select('id').eq('data', dia).maybeSingle();
       if (!rdo) {
         const { data: novo } = await supabase.from('rdos')
-          .upsert({ data: dia }, { onConflict: 'data' }).select().single();
+          .upsert({ data: dia }, { onConflict: 'obra_id,data' }).select().single();
         rdo = novo;
       }
       if (!rdo?.id) return;
@@ -2219,7 +2219,7 @@ function PlanejadorSemana({ empreiteiros, ambientes, baseMonday, offsetInicial =
       if (eSel) throw eSel;
       if (!rdo) {
         const { data, error: eIns } = await supabase.from('rdos')
-          .upsert({ data: mondayStr }, { onConflict: 'data' }).select().single();
+          .upsert({ data: mondayStr }, { onConflict: 'obra_id,data' }).select().single();
         if (eIns) throw eIns;
         rdo = data;
       }

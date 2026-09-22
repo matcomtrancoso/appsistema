@@ -16,6 +16,9 @@ import { ABERTAS } from '../lib/pendencias-filtro';
 import { EngCadastros } from '../screens/cadastros';
 import { RDOHistoricoScreen } from '../screens/rdo-historico';
 import { GaleriaFotos } from '../screens/galeria-fotos';
+import { ObrasScreen } from '../screens/obras';
+import { ConfiguracoesScreen } from '../screens/configuracoes';
+import { useObraSelecionada } from '../lib/obra-selecionada';
 import { hojeLocal } from '../lib/date';
 import { semanaDe, atividadesDoDia, chaveDoDia } from '../lib/atividades-do-dia';
 import { registrarInicioRealDoRDO } from '../lib/cronograma';
@@ -31,6 +34,7 @@ function loginInitialM(profile) {
 
 
 export default function AppMestre({ profile }) {
+  const { obraAtual, obras } = useObraSelecionada();
   const [route, setRoute] = useState({ screen: 'home', params: {} });
   const [efetivoSheetOpen, setEfetivoSheetOpen] = useState(false);
   const ini = loginInitialM(profile);
@@ -103,7 +107,7 @@ export default function AppMestre({ profile }) {
       // upsert: se outro dispositivo criar o RDO do dia ao mesmo tempo, a
       // constraint unique(data) devolve o registro existente em vez de falhar.
       const { data, error } = await supabase
-        .from('rdos').upsert({ data: alvo }, { onConflict: 'data' }).select().single();
+        .from('rdos').upsert({ data: alvo }, { onConflict: 'obra_id,data' }).select().single();
       if (error) console.error('Erro ao abrir o RDO de', alvo, error);
       rdo = data;
     }
@@ -362,6 +366,7 @@ export default function AppMestre({ profile }) {
     'rdo-activity': 'rdo', 'rdo-summary': 'rdo', 'rdo-occurrence': 'rdo', 'rdo-assign': 'rdo', 'rdo-historico': 'rdo', 'rdo-wizard': 'rdo', 'rdo-classic': 'rdo',
     'checklist-detail': 'checklist', 'checklist-new': 'checklist',
     'efetivo': 'home', 'cadastros': 'home', 'efetivo-resumo': 'home', 'galeria': 'home',
+    'configuracoes': 'mais', 'obras': 'mais',
   };
   const activeNav = navMap[route.screen] || route.screen;
 
@@ -407,7 +412,7 @@ export default function AppMestre({ profile }) {
       body = <MestreOccurrence goto={goto} rdoId={rdoId} profile={profile} />;
       break;
     case 'equipamentos':  body = <MestreEquipamentos goto={goto} />; break;
-    case 'mais':          body = <MestreMais goto={goto} />; break;
+    case 'mais':          body = <MestreMais goto={goto} profile={profile} />; break;
     case 'efetivo':       body = <MestreEfetivo goto={goto} />; break;
     case 'checklist':     body = <ChecklistList goto={goto} onContagem={setChecklistBadge} persona="mestre" />; break;
     case 'checklist-detail': body = <ChecklistDetail goto={goto} params={route.params} persona="mestre" />; break;
@@ -416,6 +421,8 @@ export default function AppMestre({ profile }) {
     case 'efetivo-resumo':   body = <EfetivoResumo goto={goto} />; break;
     case 'rdo-historico':    body = <RDOHistoricoScreen goto={goto} onEditRDO={abrirRDOData} today={today} />; break;
     case 'galeria':          body = <GaleriaFotos goto={goto} voltarPara="home" />; break;
+    case 'obras':            body = <ObrasScreen goto={goto} voltarPara="configuracoes" />; break;
+    case 'configuracoes':    body = <ConfiguracoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     default:
       body = <MestreHome goto={goto} dailyState={dailyState} efetivo={efetivo} setDailyState={() => {}} />;
   }
@@ -430,7 +437,15 @@ export default function AppMestre({ profile }) {
         borderBottom: '0.5px solid var(--border)', flexShrink: 0,
       }}>
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{MARCA.obra}</div>
+          {obras.length > 1 ? (
+            <button onClick={() => goto('configuracoes')} title="Trocar de obra"
+              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
+                fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>
+              {obraAtual?.nome || MARCA.obra} ▾
+            </button>
+          ) : (
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-1)' }}>{obraAtual?.nome || MARCA.obra}</div>
+          )}
           <div style={{ fontSize: 10, color: 'var(--text-3)', fontWeight: 600 }}>MESTRE DE OBRAS</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

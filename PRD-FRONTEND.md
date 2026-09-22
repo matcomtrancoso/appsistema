@@ -35,12 +35,14 @@ Um app de gestão de obra: o mestre lança o diário do dia (efetivo, frentes de
 Login
 └── Engenharia / Visitante
     ├── Barra inferior (celular): Início · Planejar · Pendências · Visitas · Cronograma
-    ├── Menu lateral (computador): Início · Planejar · Cronograma · Efetivo · Pendências · Visitas ·
-    │                              Contratações · Projetos · Gestão visual · Equipamentos · Fotos ·
-    │                              Cadastros · Relatórios
+    ├── Menu lateral (computador): Início · Planejar · Cronograma · Medições · Efetivo · Pendências ·
+    │                              Visitas · Contratações · Orçamentos · Projetos · Gestão visual ·
+    │                              Equipamentos · Fotos · Cadastros · Relatórios
     ├── Início ── atalhos: Efetivo · Cronograma · Pendências · Equipamentos · Contratações ·
     │             Projetos · Gestão visual · Visitas · Fotos · Relatórios
-    ├── Menu do avatar: Painel de admin (só admin) · Outras telas · Tema · Sair da conta
+    ├── Menu do avatar: Configurações · Gerenciar obras e Painel de admin (só admin) · Outras telas · Tema · Sair da conta
+    │   [NOTA: este mapa ainda não cobre a fatia 2 do multi-obra (seletor de obra, telas Obras e
+    │   Configurações) por inteiro — só o que a fatia de Orçamentos/Medições acrescentou.]
     ├── Planejar ── Nova atividade (4 etapas) · Não realizadas · Realocar · Semana · Fechamento · PDF
     ├── RDO (por Início → "Fazer RDO"): escolha do jeito → Por equipe | Por ambiente | Clássico
     │                                     → Resumo do dia → Enviar; Ocorrência; Histórico de RDOs
@@ -311,6 +313,22 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 **Ações:** criar; avançar de etapa (em aberto → enviado → aprovado); comentar e marcar comentário como resolvido; editar; apagar.
 **Regras por perfil:** o **valor do contrato** é dinheiro; só aparece na tela da engenharia. `[PENDENTE: ver decisão de permissão do mestre em PRD-BACKEND]`
 **Estado vazio:** "Nenhuma contratação aqui. Crie uma nova contratação com o botão acima."
+
+## Tela: Orçamentos
+
+**Quem acessa:** só a engenharia — mesma regra de Contratações; o mestre não tem esta tela. `[VISTO]`
+**O que aparece:** lista de contratações, cada uma com orçado (soma dos itens), valor do contrato, saldo (contrato − orçado, verde/vermelho) e número de itens. Ao abrir uma: os itens do orçamento (descrição, unidade, quantidade, preço unitário) editáveis em linha, com total no rodapé.
+**Campos e informações:** ver `orcamento_itens`.
+**Ações:** adicionar item; editar campo (salva ao sair do campo); apagar item. **Apagar a contratação em Contratações apaga o orçamento dela junto** (aviso na tela de exclusão).
+**Estado vazio:** "Nenhuma contratação cadastrada ainda." (orçamento se organiza por contratação).
+
+## Tela: Medições
+
+**Quem acessa:** engenharia e mestre — quem mede no canteiro é normalmente o mestre. `[VISTO]`
+**O que aparece:** "Medições" com aviso de que é diferente do avanço calculado pelo Cronograma. Cartão de destaque com a última medição (%). Lista das anteriores (%, data, observações, quem registrou). **+ Medir**.
+**Campos e informações:** ver `medicoes_obra` (data, percentual 0–100, observações, responsável).
+**Ações:** registrar nova medição (uma por dia); apagar (não existe editar — apaga e registra de novo).
+**Estado vazio:** "Nenhuma medição registrada ainda."
 
 ## Tela: Projetos
 

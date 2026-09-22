@@ -7,10 +7,12 @@
 // banco. Mesma ideia de src/lib/visitante.js, só que para a obra em vez do
 // papel de quem está logado.
 
-// Tem que bater com a lista de tabelas de
+// As 20 primeiras têm que bater com a lista de tabelas de
 // supabase/migrations/20260921-multiobra-fatia1-preparar.sql. Divergir aqui
 // silenciosamente faz uma tabela nova vazar entre obras (fica sem o filtro) ou
-// gravar em obra nenhuma sem avisar (fica sem o obra_id no insert).
+// gravar em obra nenhuma sem avisar (fica sem o obra_id no insert). As duas
+// últimas (orcamento_itens, medicoes_obra) já nasceram com obra_id
+// obrigatório em supabase/migrations/20260922-orcamentos-medicoes.sql.
 export const TABELAS_DA_OBRA = [
   'ambientes', 'cronograma_itens', 'cronograma_avanco',
   'rdos', 'atividades_rdo', 'efetivo_rdo', 'ocorrencias', 'rdo_fotos',
@@ -19,6 +21,7 @@ export const TABELAS_DA_OBRA = [
   'projetos', 'projetos_comentarios', 'projetos_dependencias',
   'planta_etapas', 'plantas_visuais', 'planta_marcacoes',
   'reunioes', 'visitas',
+  'orcamento_itens', 'medicoes_obra',
 ];
 
 // Set à parte para o `.has()` ser O(1): `ehTabelaDaObra` roda em todo

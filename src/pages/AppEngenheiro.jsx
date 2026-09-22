@@ -23,6 +23,8 @@ import { RDOHistoricoScreen } from '../screens/rdo-historico';
 import { RevisaoColaboradoresPopup } from '../screens/revisao-colaboradores';
 import { ObrasScreen } from '../screens/obras';
 import { ConfiguracoesScreen } from '../screens/configuracoes';
+import { OrcamentosScreen } from '../screens/orcamentos';
+import { MedicoesScreen } from '../screens/medicoes';
 import { useObraSelecionada } from '../lib/obra-selecionada';
 import { MARCA } from '../marca.js';
 import { hojeLocal } from '../lib/date';
@@ -478,10 +480,12 @@ export default function AppEngenheiro({ profile }) {
     { key: 'home',         label: 'In\xedcio',        icon: Icon.home },
     { key: 'planejar',     label: 'Planejar',        icon: Icon.calendar },
     { key: 'cronograma',   label: 'Cronograma',      icon: Icon.calendarWeek },
+    { key: 'medicoes',     label: 'Medi\xe7\xf5es',    icon: '📏' },
     { key: 'efetivo-resumo', label: 'Efetivo',       icon: Icon.barChart },
     { key: 'checklist',    label: 'Pend\xeancias',    icon: Icon.clipboardList, badge: checklistBadge },
     { key: 'atas',         label: 'Visitas',         icon: Icon.users },
     { key: 'contratacoes', label: 'Contrata\xe7\xf5es', icon: Icon.clipboard },
+    { key: 'orcamentos',   label: 'Or\xe7amentos',    icon: '💰' },
     { key: 'projetos',     label: 'Projetos',        icon: Icon.ruler },
     { key: 'gestao-visual', label: 'Gest\xe3o visual', icon: Icon.eye },
     { key: 'equipamentos', label: 'Equipamentos',    icon: Icon.wrench },
@@ -569,6 +573,8 @@ export default function AppEngenheiro({ profile }) {
     case 'efetivo-resumo':   body = <EfetivoResumo goto={goto} />; break;
     case 'rdo-historico':    body = <RDOHistoricoScreen goto={goto} params={route.params} onEditRDO={(date) => { loadRDO_eng(date); goto('rdo-eng', { date }); }} />; break;
     case 'contratacoes':     body = <ContratacoesScreen goto={goto} />; break;
+    case 'orcamentos':       body = <OrcamentosScreen goto={goto} />; break;
+    case 'medicoes':         body = <MedicoesScreen goto={goto} profile={profile} />; break;
     case 'projetos':         body = <ProjetosScreen goto={goto} />; break;
     case 'cronograma':       body = <CronogramaScreen isDesktop={isDesktop} />; break;
     case 'galeria':          body = <GaleriaFotos goto={goto} voltarPara="home" />; break;

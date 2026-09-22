@@ -6,6 +6,28 @@
     "created_at",
     "is_admin"
   ],
+  "orcamento_itens": [
+    "id",
+    "obra_id",
+    "contratacao_id",
+    "descricao",
+    "unidade",
+    "quantidade",
+    "preco_unitario",
+    "ordem",
+    "created_at",
+    "updated_at"
+  ],
+  "medicoes_obra": [
+    "id",
+    "obra_id",
+    "data",
+    "percentual",
+    "observacoes",
+    "responsavel_nome",
+    "created_at",
+    "updated_at"
+  ],
   "ambientes": [
     "id",
     "nome",

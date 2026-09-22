@@ -852,9 +852,17 @@ function CardSheet({ c, comentarios, onClose, onAction, onDelete, onRefresh }) {
                 {!confirmaDelete ? (
                   <button onClick={() => setConfirmaDelete(true)} style={{ height: 40, border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}>Excluir contratação</button>
                 ) : (
-                  <button onClick={excluir} disabled={deleting} style={{ height: 40, borderRadius: 10, border: 'none', background: 'rgba(176,36,42,0.12)', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, fontWeight: 800 }}>
-                    {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
-                  </button>
+                  <>
+                    {/* orcamento_itens tem ON DELETE CASCADE na contratação: apaga
+                        junto, sem exclusão suave. A pessoa precisa saber disso
+                        antes de confirmar, não descobrir depois. */}
+                    <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 6, textAlign: 'right' }}>
+                      Apaga também o orçamento desta contratação, sem volta.
+                    </div>
+                    <button onClick={excluir} disabled={deleting} style={{ height: 40, borderRadius: 10, border: 'none', background: 'rgba(176,36,42,0.12)', color: 'var(--danger)', cursor: 'pointer', fontSize: 13, fontWeight: 800 }}>
+                      {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
+                    </button>
+                  </>
                 )}
               </div>
             </>

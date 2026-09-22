@@ -96,9 +96,25 @@ export const DADOS_DEMO = {
   ],
 
   contratacoes: [
-    { id: 'k1', descricao: 'Esquadrias de alumínio', responsavel_nome: 'João', fornecedor_nome: 'Alumínio Vale', status: 'aprovado', prazo_envio: maisDias(-10), data_envio: maisDias(-12), data_aprovacao: maisDias(-4), valor: 86000 },
-    { id: 'k2', descricao: 'Impermeabilização de lajes', responsavel_nome: 'João', fornecedor_nome: 'Imperm Brasil', status: 'enviado', prazo_envio: maisDias(2), data_envio: maisDias(-1), data_aprovacao: null, valor: 34500 },
-    { id: 'k3', descricao: 'Pintura interna', responsavel_nome: 'João', fornecedor_nome: null, status: 'aberto', prazo_envio: maisDias(9), data_envio: null, data_aprovacao: null, valor: null },
+    { id: 'k1', descricao: 'Esquadrias de alumínio', responsavel_nome: 'João', fornecedor_nome: 'Alumínio Vale', status: 'aprovado', prazo_envio: maisDias(-10), data_envio: maisDias(-12), data_aprovacao: maisDias(-4), valor_contrato: 86000 },
+    { id: 'k2', descricao: 'Impermeabilização de lajes', responsavel_nome: 'João', fornecedor_nome: 'Imperm Brasil', status: 'enviado', prazo_envio: maisDias(2), data_envio: maisDias(-1), data_aprovacao: null, valor_contrato: 34500 },
+    { id: 'k3', descricao: 'Pintura interna', responsavel_nome: 'João', fornecedor_nome: null, status: 'aberto', prazo_envio: maisDias(9), data_envio: null, data_aprovacao: null, valor_contrato: null },
+  ],
+
+  // Fatia orçamentos/medições: itens do orçamento de uma contratação (k1) e
+  // um histórico curto de medições da obra.
+  orcamento_itens: [
+    { id: 'oi1', contratacao_id: 'k1', descricao: 'Janela de correr 2 folhas', unidade: 'un', quantidade: 18, preco_unitario: 1450, ordem: 0 },
+    { id: 'oi2', contratacao_id: 'k1', descricao: 'Porta balcão', unidade: 'un', quantidade: 6, preco_unitario: 2200, ordem: 1 },
+    { id: 'oi3', contratacao_id: 'k1', descricao: 'Instalação e vedação', unidade: 'vb', quantidade: 1, preco_unitario: 8600, ordem: 2 },
+  ],
+  // Ordem já do mais recente pro mais antigo: o modo demo ignora .order()
+  // (ver src/lib/demo.js), então a lista só sai na ordem certa se já nascer
+  // assim aqui.
+  medicoes_obra: [
+    { id: 'md3', data: maisDias(-1), percentual: 65, observacoes: 'Alvenaria do 2º pavimento iniciada.', responsavel_nome: 'João' },
+    { id: 'md2', data: maisDias(-15), percentual: 58, observacoes: null, responsavel_nome: 'Paulo' },
+    { id: 'md1', data: maisDias(-30), percentual: 52, observacoes: 'Estrutura avançando conforme planejado.', responsavel_nome: 'Paulo' },
   ],
 
   projetos: [

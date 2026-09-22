@@ -37,8 +37,10 @@ Um app que roda no celular e no computador, com três tipos de acesso (engenhari
 
 **O que ele NÃO faz** (proposta minha; confirme):
 - App nativo de loja (é instalável pela tela do celular, mas não está na loja).
-- Financeiro e medição de obra. Só guarda o **valor do contrato**. Não guarda custo de mão de obra nem de locação.
+- Financeiro completo. Guarda o **valor do contrato** e um **orçamento por contratação** (itens com quantidade e preço); não guarda custo de mão de obra, folha de pagamento nem locação.
 - Chat interno ou notificações.
+
+**Adicionado depois:** orçamento por contratação (tela Orçamentos, só engenharia) e medição de avanço físico registrada no canteiro por data (tela Medições, mestre e engenharia — diferente do avanço que o Cronograma calcula sozinho).
 
 **Limite de uso da licença:** o app é de uso interno. O `LICENCA.txt` proíbe vender, revender, alugar ou distribuir o app ou versões dele. `[AINDA NÃO RESPONDIDO: existe plano de oferecer o sistema a outras empresas? Se sim, isto muda tudo]`
 

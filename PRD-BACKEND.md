@@ -298,6 +298,38 @@ Notas e pontos em aberto de cada etapa da contratação.
 | autor_nome | text | não | |
 | created_at, updated_at | timestamptz | sim | |
 
+### Tabela `orcamento_itens`
+Os itens (descrição, quantidade, preço) do orçamento de uma contratação. Tela **Orçamentos**, só engenharia.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras` |
+| contratacao_id | uuid | sim | FK `contratacoes`, **apaga em cascata** — apagar a contratação apaga o orçamento dela junto |
+| descricao | text | sim | |
+| unidade | text | sim | texto livre (m², un, vb…), padrão vazio |
+| quantidade | numeric | sim | padrão 0 |
+| preco_unitario | numeric | sim | **dinheiro**, padrão 0 |
+| ordem | integer | sim | ordem de exibição, padrão 0 |
+| created_at, updated_at | timestamptz | sim | `updated_at` por gatilho |
+
+Índices: `obra_id`, `contratacao_id`.
+
+### Tabela `medicoes_obra`
+O percentual de avanço físico que alguém mediu no canteiro e registrou por data — diferente do percentual que a tela **Cronograma** calcula sozinho a partir do avanço de cada item. Tela **Medições**, mestre e engenharia.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras` |
+| data | date | sim | única por obra (`obra_id, data`) — uma medição por dia |
+| percentual | numeric | sim | CHECK: 0 a 100 |
+| observacoes | text | não | |
+| responsavel_nome | text | não | nome de quem registrou |
+| created_at, updated_at | timestamptz | sim | `updated_at` por gatilho |
+
+Não existe edição pela tela — só apagar e registrar de novo (a chave única por dia não deixa duplicar).
+
 ### Tabela `contratacoes_responsaveis`
 Lista de quem responde pelas contratações.
 

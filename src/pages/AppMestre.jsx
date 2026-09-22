@@ -18,6 +18,7 @@ import { RDOHistoricoScreen } from '../screens/rdo-historico';
 import { GaleriaFotos } from '../screens/galeria-fotos';
 import { ObrasScreen } from '../screens/obras';
 import { ConfiguracoesScreen } from '../screens/configuracoes';
+import { MedicoesScreen } from '../screens/medicoes';
 import { useObraSelecionada } from '../lib/obra-selecionada';
 import { hojeLocal } from '../lib/date';
 import { semanaDe, atividadesDoDia, chaveDoDia } from '../lib/atividades-do-dia';
@@ -366,7 +367,7 @@ export default function AppMestre({ profile }) {
     'rdo-activity': 'rdo', 'rdo-summary': 'rdo', 'rdo-occurrence': 'rdo', 'rdo-assign': 'rdo', 'rdo-historico': 'rdo', 'rdo-wizard': 'rdo', 'rdo-classic': 'rdo',
     'checklist-detail': 'checklist', 'checklist-new': 'checklist',
     'efetivo': 'home', 'cadastros': 'home', 'efetivo-resumo': 'home', 'galeria': 'home',
-    'configuracoes': 'mais', 'obras': 'mais',
+    'configuracoes': 'mais', 'obras': 'mais', 'medicoes': 'mais',
   };
   const activeNav = navMap[route.screen] || route.screen;
 
@@ -423,6 +424,7 @@ export default function AppMestre({ profile }) {
     case 'galeria':          body = <GaleriaFotos goto={goto} voltarPara="home" />; break;
     case 'obras':            body = <ObrasScreen goto={goto} voltarPara="configuracoes" />; break;
     case 'configuracoes':    body = <ConfiguracoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
+    case 'medicoes':         body = <MedicoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     default:
       body = <MestreHome goto={goto} dailyState={dailyState} efetivo={efetivo} setDailyState={() => {}} />;
   }

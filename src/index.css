@@ -101,7 +101,12 @@ html, body, #root {
      em qualquer paleta que não o defina, e o texto some. */
   --text-1: var(--text);
   --text-2: #466168;
-  --text-3: #7D9296;
+  /* Era #7D9296: 3.27:1 no branco e 2.83:1 no --bg, abaixo do mínimo de
+     4.5:1 do WCAG AA para texto normal (achado pela skill ui-ux-pro-max,
+     regra de contraste). É usado em ~380 pontos (.t-caption, legenda,
+     texto de apoio) — corrigir aqui resolve todos de uma vez. Novo valor:
+     5.72:1 no branco, 4.95:1 no --bg. */
+  --text-3: #5A696C;
   --text-on-primary: #FFFFFF;
   --border: #D9E2E3;
   --border-strong: #BCCACC;

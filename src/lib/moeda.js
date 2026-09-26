@@ -21,3 +21,8 @@ export function parseV(s) {
 export function fmtCur(n) {
   return n == null ? '' : Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
+
+/** Percentual para exibir: 33.333 → "33,33%" (até 2 casas). */
+export function fmtPct(n) {
+  return `${Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%`;
+}

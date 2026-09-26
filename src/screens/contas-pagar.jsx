@@ -8,24 +8,12 @@ import { hojeLocal, fmtDataBR, rotuloMesAno, somaMesesYM, faixaDoMes } from '../
 import { fmtV, parseV, fmtCur } from '../lib/moeda.js';
 import { quinzenaDe, quinzenaVizinha, rotuloQuinzena, presencasAdm, valorPagamento, linhasDaQuinzena, resumoQuinzena, situacaoDespesa, totaisDespesas } from '../lib/pagar.js';
 import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
+import { todasAsLinhas } from '../lib/paginar.js';
 import { Popup, Rodape, campo, rotulo } from '../components/popup-financeiro';
 
 const fmtDia = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
 
 const cartaoAviso = { padding: 14, marginBottom: 12, background: 'var(--danger-tint,#FEE2E2)', color: 'var(--danger)', fontSize: 13, fontWeight: 700 };
-
-// O servidor devolve no máximo 1000 linhas por consulta (max-rows) e NÃO avisa
-// quando corta — aqui isso viraria dia de trabalho sem pagar. Lê em páginas até
-// vir uma página incompleta. `montar` cria a consulta do zero a cada página.
-async function todasAsLinhas(montar, pagina = 1000) {
-  const tudo = [];
-  for (let de = 0; ; de += pagina) {
-    const { data, error } = await montar().range(de, de + pagina - 1);
-    if (error) return { data: null, error };
-    tudo.push(...(data || []));
-    if ((data || []).length < pagina) return { data: tudo, error: null };
-  }
-}
 
 export function ContasPagarScreen({ goto, voltarPara = 'home' }) {
   const [aba, setAba] = useState('mao');

@@ -4,6 +4,8 @@
 const hoje = new Date();
 const iso = (d) => d.toISOString().slice(0, 10);
 const maisDias = (n) => { const d = new Date(hoje); d.setDate(d.getDate() + n); return iso(d); };
+// Primeiro dia do mês, `n` meses a partir de hoje (o banco guarda a medição pelo dia 1).
+const mesDia1 = (n) => { const d = new Date(hoje.getFullYear(), hoje.getMonth() + n, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`; };
 
 export const PERFIL_DEMO = {
   id: 'demo-user',
@@ -101,12 +103,35 @@ export const DADOS_DEMO = {
     { id: 'k3', descricao: 'Pintura interna', responsavel_nome: 'João', fornecedor_nome: null, status: 'aberto', prazo_envio: maisDias(9), data_envio: null, data_aprovacao: null, valor_contrato: null },
   ],
 
-  // Fatia orçamentos/medições: itens do orçamento de uma contratação (k1) e
-  // um histórico curto de medições da obra.
+  // Itens do orçamento de compra de uma contratação (k1).
   orcamento_itens: [
     { id: 'oi1', contratacao_id: 'k1', descricao: 'Janela de correr 2 folhas', unidade: 'un', quantidade: 18, preco_unitario: 1450, ordem: 0 },
     { id: 'oi2', contratacao_id: 'k1', descricao: 'Porta balcão', unidade: 'un', quantidade: 6, preco_unitario: 2200, ordem: 1 },
     { id: 'oi3', contratacao_id: 'k1', descricao: 'Instalação e vedação', unidade: 'vb', quantidade: 1, preco_unitario: 8600, ordem: 2 },
+  ],
+  // Orçamento da obra (EAP) aprovado: 480.000 no total. Medição: dois meses fechados e o atual aberto.
+  orcamento_eap: [
+    { id: 'ea1', codigo: '1', pai_codigo: null, descricao: 'Fundação', unidade: '', quantidade: 0, preco_unitario: 0, is_grupo: true, ordem: 1 },
+    { id: 'ea2', codigo: '1.1', pai_codigo: '1', descricao: 'Escavação mecanizada', unidade: 'm³', quantidade: 800, preco_unitario: 45, is_grupo: false, ordem: 2 },
+    { id: 'ea3', codigo: '1.2', pai_codigo: '1', descricao: 'Estacas e blocos de concreto', unidade: 'm³', quantidade: 220, preco_unitario: 620, is_grupo: false, ordem: 3 },
+    { id: 'ea4', codigo: '2', pai_codigo: null, descricao: 'Estrutura', unidade: '', quantidade: 0, preco_unitario: 0, is_grupo: true, ordem: 4 },
+    { id: 'ea5', codigo: '2.1', pai_codigo: '2', descricao: 'Pilares e vigas', unidade: 'm³', quantidade: 180, preco_unitario: 780, is_grupo: false, ordem: 5 },
+    { id: 'ea6', codigo: '2.2', pai_codigo: '2', descricao: 'Lajes', unidade: 'm²', quantidade: 900, preco_unitario: 85, is_grupo: false, ordem: 6 },
+    { id: 'ea7', codigo: '3', pai_codigo: null, descricao: 'Alvenaria', unidade: '', quantidade: 0, preco_unitario: 0, is_grupo: true, ordem: 7 },
+    { id: 'ea8', codigo: '3.1', pai_codigo: '3', descricao: 'Alvenaria de vedação', unidade: 'm²', quantidade: 1500, preco_unitario: 42, is_grupo: false, ordem: 8 },
+    { id: 'ea9', codigo: '3.2', pai_codigo: '3', descricao: 'Chapisco e emboço', unidade: 'm²', quantidade: 1385, preco_unitario: 20, is_grupo: false, ordem: 9 },
+  ],
+  medicoes_mensais: [
+    { id: 'mm1', mes: mesDia1(-2), status: 'fechada', fechada_em: maisDias(-55), fechada_por_nome: 'João' },
+    { id: 'mm2', mes: mesDia1(-1), status: 'fechada', fechada_em: maisDias(-25), fechada_por_nome: 'João' },
+    { id: 'mm3', mes: mesDia1(0), status: 'aberta', fechada_em: null, fechada_por_nome: null },
+  ],
+  medicao_itens: [
+    { id: 'mi1', medicao_id: 'mm1', eap_id: 'ea2', percentual_acumulado: 100 },
+    { id: 'mi2', medicao_id: 'mm1', eap_id: 'ea3', percentual_acumulado: 60 },
+    { id: 'mi3', medicao_id: 'mm2', eap_id: 'ea3', percentual_acumulado: 100 },
+    { id: 'mi4', medicao_id: 'mm2', eap_id: 'ea5', percentual_acumulado: 50 },
+    { id: 'mi5', medicao_id: 'mm3', eap_id: 'ea5', percentual_acumulado: 70 },
   ],
   // Financeiro: valor fechado, recebimentos e despesas. (O demo ignora filtros,
   // então a mão de obra paga não entra aqui — a tela filtra por tipo também.)
@@ -118,15 +143,6 @@ export const DADOS_DEMO = {
   contas_pagar: [
     { id: 'cp1', tipo: 'despesa', descricao: 'Cimento CP-II — 40 sacos', categoria: 'Material', valor: 1680, vencimento: maisDias(3), status: 'aberto', pago_em: null },
     { id: 'cp2', tipo: 'despesa', descricao: 'Aluguel do container', categoria: 'Aluguel', valor: 900, vencimento: maisDias(-2), status: 'pago', pago_em: maisDias(-2) },
-  ],
-
-  // Ordem já do mais recente pro mais antigo: o modo demo ignora .order()
-  // (ver src/lib/demo.js), então a lista só sai na ordem certa se já nascer
-  // assim aqui.
-  medicoes_obra: [
-    { id: 'md3', data: maisDias(-1), percentual: 65, observacoes: 'Alvenaria do 2º pavimento iniciada.', responsavel_nome: 'João' },
-    { id: 'md2', data: maisDias(-15), percentual: 58, observacoes: null, responsavel_nome: 'Paulo' },
-    { id: 'md1', data: maisDias(-30), percentual: 52, observacoes: 'Estrutura avançando conforme planejado.', responsavel_nome: 'Paulo' },
   ],
 
   projetos: [

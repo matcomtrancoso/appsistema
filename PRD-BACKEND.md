@@ -315,8 +315,47 @@ Os itens (descrição, quantidade, preço) do orçamento de uma contratação. T
 
 Índices: `obra_id`, `contratacao_id`.
 
-### Tabela `medicoes_obra`
-O percentual de avanço físico que alguém mediu no canteiro e registrou por data — diferente do percentual que a tela **Cronograma** calcula sozinho a partir do avanço de cada item. Tela **Medições**, mestre e engenharia.
+### Tabela `orcamento_eap`
+O **orçamento da obra** em EAP: uma linha por item (1, 1.1, 1.1.1…). É o primeiro passo: dele saem o cronograma e a medição. Tela **Orçamento da obra** (só engenharia). Diferente de `orcamento_itens`, que é o orçamento de compra de cada contratação.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras` |
+| codigo | text | sim | o item da EAP (`1`, `1.2`, `1.2.3`); **único por obra** (`obra_id, codigo`) |
+| pai_codigo | text | não | código do pai (o pai é o código sem o último trecho); vazio no 1º nível |
+| descricao | text | sim | |
+| unidade | text | sim | texto livre, padrão vazio |
+| quantidade, preco_unitario | numeric | sim | **dinheiro** no preço; CHECK ≥ 0; ficam em 0 nos grupos |
+| is_grupo | boolean | sim | grupo = tem filhos; vale a **soma dos filhos** (calculada na tela, não guardada) |
+| ordem | integer | sim | ordem de exibição |
+| created_at, updated_at | timestamptz | sim | `updated_at` por gatilho |
+
+Aprovar o orçamento grava `obra_contrato` (`valor_aprovado` = total, `aprovado_em`). Depois de aprovado, a **tela** trava as linhas — o banco não impede (a trava de verdade é só a do mês fechado, abaixo).
+
+### Tabela `medicoes_mensais`
+Uma medição por obra por mês, no fim do mês. Tela **Medições**.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras` |
+| mes | date | sim | sempre o **dia 1** do mês (CHECK); único por obra (`obra_id, mes`) |
+| status | text | sim | CHECK: `aberta`, `fechada`; `fechada` exige `fechada_em` |
+| fechada_em, fechada_por_nome | timestamptz, text | não | |
+| created_at, updated_at | timestamptz | sim | |
+
+### Tabela `medicao_itens`
+O **% acumulado** (0–100, CHECK) de cada linha do orçamento naquele mês. Único por (`medicao_id, eap_id`); apagar a medição ou a linha do orçamento apaga em cascata. **Valor do mês = valor da linha × (% deste mês − % do mês anterior) / 100.** Linha sem lançamento no mês continua no % do mês anterior.
+
+**Mês fechado não muda (gatilhos, `SECURITY DEFINER`, `20260927` + `20260928-medicao-travas-reforco`):** `trava_medicao_fechada` recusa inserir, alterar, **mover** e apagar itens de uma medição `fechada` (olha a medição de antes e a de depois) e exige que item, medição e linha do orçamento sejam da **mesma obra**; `trava_apagar_medicao_fechada` recusa apagar a medição fechada; `trava_alterar_medicao` não deixa mudar obra/mês e só deixa **reabrir a última** medição da obra; `trava_valores_orcamento` recusa mudar quantidade/preço/grupo/código do orçamento enquanto houver mês fechado. Índice único parcial: **uma só medição aberta por obra**. `medicao_itens.eap_id` é `ON DELETE RESTRICT` (apagar linha do orçamento com medição dá erro). `cronograma_itens.orcamento_eap_id` é único (uma tarefa por linha). O único caminho para mexer no mês fechado é **reabrir**. Só o mês **fechado** entra no Contas a receber.
+
+**Acesso (as três — `orcamento_eap`, `medicoes_mensais`, `medicao_itens`):** RLS por obra + `not e_visitante()`, como as contas. Também `cronograma_itens.orcamento_eap_id` (FK `orcamento_eap`, `ON DELETE SET NULL`): de que linha do orçamento a tarefa nasceu.
+
+**Chaves únicas antigas removidas** (`20260927`): `rdos_data_key`, `cronograma_itens_wbs_id_key`, `planta_etapas_nome_key` valiam para o banco inteiro e impediam duas obras de ter RDO no mesmo dia. Valem só as por obra (`obra_id, …`).
+
+### Tabela `medicoes_obra` (em desuso)
+O modelo antigo: um % geral da obra por data. **A tela não usa mais** (a medição agora é por linha, em `medicoes_mensais`); a tabela e os dados ficam — nunca se apaga por limpeza.
 
 | Campo | Tipo | Obrigatório | Observação |
 |---|---|---|---|
@@ -369,7 +408,7 @@ Dinheiro que entrou (o cliente pagou), lançado à mão. Tela **Contas a receber
 | created_at, updated_at | timestamptz | sim | |
 
 ### Tabela `obra_contrato`
-O **valor fechado com o cliente** (orçamento aprovado) de cada obra. O "a receber" sai de % medido (`medicoes_obra`) × este valor.
+O **valor fechado com o cliente** (orçamento aprovado) de cada obra: gravado quando a engenharia **aprova o Orçamento da obra** (`valor_aprovado` = total da EAP, `aprovado_em` = hoje). **Aprovado = `aprovado_em` preenchida.** Ao reabrir (só sem nenhuma medição) só a data de aprovação é limpa. O "a receber" sai das **medições mensais fechadas** contra os recebimentos.
 
 | Campo | Tipo | Obrigatório | Observação |
 |---|---|---|---|

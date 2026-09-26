@@ -439,7 +439,7 @@ export default function AppMestre({ profile }) {
     case 'configuracoes':    body = <ConfiguracoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     case 'medicoes':         body = <MedicoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     case 'pagar':            body = <ContasPagarScreen goto={goto} voltarPara="mais" />; break;
-    case 'receber':          body = <ContasReceberScreen goto={goto} voltarPara="mais" />; break;
+    case 'receber':          body = <ContasReceberScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     default:
       body = <MestreHome goto={goto} dailyState={dailyState} efetivo={efetivo} setDailyState={() => {}} />;
   }

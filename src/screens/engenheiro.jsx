@@ -539,9 +539,13 @@ export function EngHome({ goto, dailyState, onStartRDO, openUserMenu }) {
   const pendAbertas = pendDash.aberta + pendDash.em_andamento + pendDash.atrasada;
   // Grade de atalhos do celular. Substitui as nove linhas largas, cujo subtítulo
   // ninguém lia e que custavam 66 px cada. Aqui cabem os atalhos de verdade.
+  // Orçamento, medição e contas: sem o visitante (o banco também recusa).
+  const financeiro = profile?.role !== 'visitante';
   const atalhos = [
+    ...(financeiro ? [{ k: 'orcamento-obra', l: 'Orçamento da obra', ic: '🧮' }] : []),
     { k: 'efetivo-resumo',     l: 'Efetivo',        ic: Icon.barChart },
     { k: 'cronograma',         l: 'Cronograma',     ic: Icon.calendarWeek },
+    ...(financeiro ? [{ k: 'medicoes', l: 'Medições', ic: '📏' }] : []),
     { k: 'checklist',          l: 'Pendências',     ic: Icon.clipboardList, badge: pendAbertas },
     { k: 'equipamentos',       l: 'Equipamentos',   ic: Icon.wrench, badge: eqAlertaCount },
     { k: 'contratacoes',       l: 'Contratações',   ic: Icon.clipboard },
@@ -549,6 +553,10 @@ export function EngHome({ goto, dailyState, onStartRDO, openUserMenu }) {
     { k: 'gestao-visual',      l: 'Gestão visual',  ic: '🎨' },
     { k: 'atas',               l: 'Visitas',        ic: Icon.users },
     { k: 'galeria',            l: 'Fotos',          ic: '📷' },
+    ...(financeiro ? [
+      { k: 'pagar',   l: 'Contas a pagar',   ic: '💸' },
+      { k: 'receber', l: 'Contas a receber', ic: '🏦' },
+    ] : []),
     { k: 'relatorios',         l: 'Relatórios',     ic: Icon.pdf },
     { k: 'cadastros',          l: 'Cadastros',      ic: Icon.cog, destaque: true },
   ];

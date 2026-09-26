@@ -631,6 +631,16 @@ function ImportarPopup({ onImportado, onCancel }) {
     setSalvando(true);
     setErroSalvar('');
 
+    // Tarefas geradas do Orçamento da obra têm o mesmo wbs_id que um cronograma importado usaria:
+    // avisa antes de trocar o nome e a hierarquia delas.
+    const { data: doOrcamento } = await supabase.from('cronograma_itens').select('wbs_id').not('orcamento_eap_id', 'is', null);
+    const ligados = new Set((doOrcamento || []).map(a => a.wbs_id));
+    const colidem = previa.itens.filter(i => ligados.has(i.wbs_id)).length;
+    if (colidem && !confirm(`${colidem} tarefas deste cronograma foram geradas do Orçamento da obra. Importar troca o nome e a posição delas pelos do arquivo (o vínculo com o orçamento continua nos mesmos números).\n\nContinuar mesmo assim?`)) {
+      setSalvando(false);
+      return;
+    }
+
     // Itens cujas datas foram corrigidas na mão não são sobrescritos: só o nome
     // e a hierarquia são atualizados, para a correção não se perder calada.
     const { data: ajustados } = await supabase

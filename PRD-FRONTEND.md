@@ -35,11 +35,12 @@ Um app de gestão de obra: o mestre lança o diário do dia (efetivo, frentes de
 Login
 └── Engenharia / Visitante
     ├── Barra inferior (celular): Início · Planejar · Pendências · Visitas · Cronograma
-    ├── Menu lateral (computador): Início · Planejar · Cronograma · Medições · Efetivo · Pendências ·
-    │                              Visitas · Contratações · Orçamentos · Contas a pagar · Contas a receber ·
+    ├── Menu lateral (computador): Início · Orçamento da obra · Planejar · Cronograma · Medições · Efetivo · Pendências ·
+    │                              Visitas · Contratações · Orçamentos de compra · Contas a pagar · Contas a receber ·
     │                              Projetos · Gestão visual · Equipamentos · Fotos · Cadastros · Relatórios
-    ├── Início ── atalhos: Efetivo · Cronograma · Pendências · Equipamentos · Contratações ·
-    │             Projetos · Gestão visual · Visitas · Fotos · Relatórios
+    ├── Início ── atalhos: Orçamento da obra · Efetivo · Cronograma · Medições · Pendências · Equipamentos · Contratações ·
+    │             Projetos · Gestão visual · Visitas · Fotos · Contas a pagar · Contas a receber · Relatórios
+    │             (Orçamento, Medições e Contas somem para o visitante)
     ├── Menu do avatar: Configurações · Gerenciar obras e Painel de admin (só admin) · Outras telas · Tema · Sair da conta
     │   [NOTA: este mapa ainda não cobre a fatia 2 do multi-obra (seletor de obra, telas Obras e
     │   Configurações) por inteiro — só o que a fatia de Orçamentos/Medições acrescentou.]
@@ -316,7 +317,14 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 **Regras por perfil:** o **valor do contrato** é dinheiro; só aparece na tela da engenharia. `[PENDENTE: ver decisão de permissão do mestre em PRD-BACKEND]`
 **Estado vazio:** "Nenhuma contratação aqui. Crie uma nova contratação com o botão acima."
 
-## Tela: Orçamentos
+## Tela: Orçamento da obra
+
+**Quem acessa:** só a engenharia (some para o visitante; o banco também recusa). É o **primeiro passo** da obra. `[VISTO]`
+**O que aparece:** valor do orçamento, número de linhas e selo **RASCUNHO** ou **✓ APROVADO**; a árvore da EAP (código, descrição, quantidade × preço, total; grupos recolhem e mostram a soma); busca. Vazio: chamada "Comece por aqui".
+**Ações:** **Importar planilha** (cola do Excel/Google ou escolhe .csv/.txt; colunas Item · Descrição · Un · Quantidade · Preço unitário; mostra prévia com erros/avisos e total antes de gravar; se já há rascunho, pergunta antes de substituir); **＋ Linha** (escolhe o pai, sugere o código; dar filho a uma linha com valor a transforma em grupo, com aviso); tocar numa linha para editar; 🗑 apaga a linha e tudo abaixo dela; **Aprovar orçamento** (grava o valor fechado e trava as linhas); **Gerar cronograma** (só depois de aprovado; cria uma tarefa por linha ainda sem tarefa, depois das que já existem, com datas em branco); **Reabrir** (só sem nenhuma medição, nem aberta; só limpa a data de aprovação). **Importar planilha** por cima de um orçamento que já existe só no rascunho, sem medição e sem cronograma gerado (senão o botão fica desabilitado, com o motivo).
+**Campos e informações:** ver `orcamento_eap`, `obra_contrato`, `cronograma_itens.orcamento_eap_id`.
+
+## Tela: Orçamentos de compra
 
 **Quem acessa:** só a engenharia — mesma regra de Contratações; o mestre não tem esta tela. `[VISTO]`
 **O que aparece:** lista de contratações, cada uma com orçado (soma dos itens), valor do contrato, saldo (contrato − orçado, verde/vermelho) e número de itens. Ao abrir uma: os itens do orçamento (descrição, unidade, quantidade, preço unitário) editáveis em linha, com total no rodapé.
@@ -326,11 +334,11 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 
 ## Tela: Medições
 
-**Quem acessa:** engenharia e mestre — quem mede no canteiro é normalmente o mestre. `[VISTO]`
-**O que aparece:** "Medições" com aviso de que é diferente do avanço calculado pelo Cronograma. Cartão de destaque com a última medição (%). Lista das anteriores (%, data, observações, quem registrou). **+ Medir**.
-**Campos e informações:** ver `medicoes_obra` (data, percentual 0–100, observações, responsável).
-**Ações:** registrar nova medição (uma por dia); apagar (não existe editar — apaga e registra de novo).
-**Estado vazio:** "Nenhuma medição registrada ainda."
+**Quem acessa:** engenharia e mestre — quem mede no canteiro é normalmente o mestre (chega por **Mais**). Visitante não vê. `[VISTO]`
+**O que aparece:** navegador de **mês**, com a situação (NÃO INICIADA · ABERTA · ✓ FECHADA); totais — **medido no mês**, **acumulado**, **avanço geral**, **falta medir**; as linhas do orçamento agrupadas, cada folha com um campo de **% acumulado** (e o atalho **100**), o valor da linha, o % do mês anterior e o valor medido no mês; busca; grupos recolhem.
+**Regras:** exige o **Orçamento da obra aprovado** (senão explica e leva até ele). O % é o **total executado até o fim do mês** (não o do mês), de 0 a 100 e nunca abaixo do mês anterior. Valor do mês = valor da linha × (% agora − % do mês anterior). Só se abre um mês depois de fechar o anterior. **Fechar mês** trava os números e passa o valor ao Contas a receber; **Reabrir** só para a última medição da obra (se há um mês aberto depois, apague-o ou feche-o antes); **Apagar medição** só enquanto aberta. Só existe uma medição aberta por vez.
+**Campos e informações:** ver `medicoes_mensais` e `medicao_itens`. (A tela antiga de % geral por data não existe mais; `medicoes_obra` fica no banco sem uso.)
+**Estado vazio:** "A medição mede cada linha do orçamento da obra, e o orçamento ainda não foi criado."
 
 ## Tela: Contas a pagar
 
@@ -343,10 +351,10 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 ## Tela: Contas a receber
 
 **Quem acessa:** engenharia e mestre (o mestre chega por **Mais**). **Visitante não vê** (some do menu e o banco recusa). `[VISTO]`
-**O que aparece:** **Orçamento aprovado (valor fechado)** com **Definir/Editar**; números do topo — **medido** (% acumulado da última medição × valor), **recebido**, **a receber** (medido − recebido) e **falta medir**; **Mês a mês** (medido no mês, recebido no mês, saldo acumulado, do primeiro mês com movimento até o atual); **Recebimentos lançados** (data, valor, descrição) com **＋ Recebimento** e apagar.
-**Campos e informações:** ver `obra_contrato`, `recebimentos` e `medicoes_obra` (o percentual vem da tela **Medições**).
-**Regras:** sem medições, o medido é zero e a tela avisa (com atalho para Medições) — se já houver recebimento, o "a receber" fica negativo, escrito "recebido a mais que o medido"; sem o valor fechado definido, a tela mostra só o total recebido e pede para definir (não há tabela mês a mês). O mês a mês vai do primeiro mês com movimento até o mês atual — ou até o mês de um lançamento futuro, se houver.
-**Estado vazio:** "Sem medições nem recebimentos ainda." / "Nenhum recebimento lançado ainda."
+**O que aparece:** **Orçamento aprovado (valor fechado)** — vem do Orçamento da obra, com atalho para ele (aqui não se digita mais o valor); números do topo — **medido e fechado** (acumulado da última medição fechada), **recebido**, **a receber** (medido − recebido) e **falta medir**; **Mês a mês** (medido no mês, recebido no mês, saldo acumulado, do primeiro mês com movimento até o atual); **Recebimentos lançados** (data, valor, descrição) com **＋ Recebimento** e apagar.
+**Campos e informações:** ver `obra_contrato`, `recebimentos`, `medicoes_mensais` e `medicao_itens` (o medido vem das **Medições fechadas**).
+**Regras:** mês de medição ainda **aberto não conta** (a tela avisa). Sem medição fechada, o medido é zero e a tela avisa (com atalho para Medições) — se já houver recebimento, o "a receber" fica negativo, escrito "recebido a mais que o medido"; sem o orçamento aprovado, a tela mostra só o total recebido e pede para aprovar o Orçamento da obra (não há tabela mês a mês). O mês a mês vai do primeiro mês com movimento até o mês atual — ou até o mês de um lançamento futuro, se houver.
+**Estado vazio:** "Sem medição fechada nem recebimento ainda." / "Nenhum recebimento lançado ainda."
 
 ## Tela: Projetos
 

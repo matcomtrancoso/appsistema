@@ -1,45 +1,56 @@
 // Contas a receber: o valor fechado com o cliente (orçamento aprovado da obra),
-// o quanto já foi medido (Medições) e o quanto já entrou de dinheiro, mês a mês.
+// o quanto já foi medido (Medições FECHADAS, linha a linha) e o quanto já entrou
+// de dinheiro, mês a mês. Mês de medição ainda aberto não conta.
 // Mestre e engenharia veem e lançam (decisão do dono do produto).
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Icon } from '../components/index';
 import { hojeLocal, fmtDataBR, rotuloMesAno } from '../lib/date';
-import { fmtV, parseV, fmtCur } from '../lib/moeda.js';
+import { fmtV, parseV, fmtCur, fmtPct } from '../lib/moeda.js';
+import { totalEap, orcamentoAprovado } from '../lib/eap.js';
+import { resumoMesesFechados } from '../lib/medicao-mensal.js';
 import { demonstrativoMensal, resumoGeral } from '../lib/receber.js';
+import { todasAsLinhas } from '../lib/paginar.js';
 import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
 import { Popup, Rodape, campo, rotulo } from '../components/popup-financeiro';
 
-const fmtPct = (n) => `${Number(n).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
 
 
-export function ContasReceberScreen({ goto, voltarPara = 'home' }) {
+export function ContasReceberScreen({ goto, profile, voltarPara = 'home' }) {
+  const podeMontarOrcamento = profile?.role !== 'mestre';   // o orçamento da obra é só da engenharia
   const hoje = hojeLocal();
-  const [contrato, setContrato] = useState(undefined);   // undefined = carregando; null = não definido
+  const [contrato, setContrato] = useState(undefined);   // undefined = carregando; null = orçamento não aprovado
+  const [linhas, setLinhas] = useState([]);
   const [medicoes, setMedicoes] = useState([]);
+  const [itens, setItens] = useState([]);
   const [recebimentos, setRecebimentos] = useState([]);
   const [erro, setErro] = useState('');
-  const [editandoContrato, setEditandoContrato] = useState(false);
   const [novo, setNovo] = useState(false);
 
   const carregar = useCallback(async () => {
-    const [c, m, r] = await Promise.all([
+    const [c, l, m, i, r] = await Promise.all([
       supabase.from('obra_contrato').select('*').maybeSingle(),
-      supabase.from('medicoes_obra').select('data, percentual'),
+      todasAsLinhas(() => supabase.from('orcamento_eap').select('*').order('ordem')),
+      supabase.from('medicoes_mensais').select('*').order('mes'),
+      todasAsLinhas(() => supabase.from('medicao_itens').select('*').order('id')),
       supabase.from('recebimentos').select('*').order('data', { ascending: false }),
     ]);
-    const falha = c.error || m.error || r.error;
+    const falha = c.error || l.error || m.error || i.error || r.error;
     if (falha) { setErro(msgAmigavel(falha, 'carregar o contas a receber')); setContrato(undefined); return; }
     setErro('');
-    setContrato(c.data || null);
+    setContrato(orcamentoAprovado(c.data) ? c.data : null);
+    setLinhas(l.data || []);
     setMedicoes(m.data || []);
+    setItens(i.data || []);
     setRecebimentos(r.data || []);
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
 
-  const valor = contrato ? contrato.valor_aprovado : null;
-  const geral = resumoGeral({ valorContrato: valor, medicoes, recebimentos });
-  const meses = demonstrativoMensal({ valorContrato: valor, medicoes, recebimentos, ateMes: hoje.slice(0, 7) }).reverse();
+  const valor = contrato ? (Number(contrato.valor_aprovado) || totalEap(linhas)) : null;
+  const mesesMedidos = useMemo(() => resumoMesesFechados({ linhas, medicoes, itens }), [linhas, medicoes, itens]);
+  const geral = resumoGeral({ valorTotal: valor, mesesMedidos, recebimentos });
+  const meses = demonstrativoMensal({ mesesMedidos, recebimentos, ateMes: hoje.slice(0, 7) }).reverse();
+  const mesAberto = medicoes.find(m => m.status !== 'fechada');
 
   async function apagar(r) {
     if (!confirm(`Apagar o recebimento de ${fmtCur(r.valor)} (${fmtDataBR(r.data)})?`)) return;
@@ -76,27 +87,29 @@ export function ContasReceberScreen({ goto, voltarPara = 'home' }) {
 
         {contrato !== undefined && (
           <>
-            {/* Valor fechado */}
+            {/* Valor fechado: vem do orçamento da obra, aprovado */}
             <div className="card" style={{ padding: '14px 16px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.08em', marginBottom: 4 }}>ORÇAMENTO APROVADO (VALOR FECHADO)</div>
                 {contrato ? (
                   <>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-1)' }}>{fmtCur(contrato.valor_aprovado)}</div>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--text-1)' }}>{fmtCur(valor)}</div>
                     {contrato.aprovado_em && <div className="t-caption" style={{ fontSize: 11 }}>aprovado em {fmtDataBR(contrato.aprovado_em)}</div>}
                   </>
                 ) : (
                   <div className="t-caption" style={{ fontSize: 12.5, lineHeight: 1.45 }}>
-                    Ainda não definido. Informe o valor fechado com o cliente para calcular quanto já dá para receber.
+                    {podeMontarOrcamento
+                      ? 'O orçamento da obra ainda não foi aprovado. Monte e aprove o orçamento: é ele que define o valor fechado e as medições.'
+                      : 'O orçamento da obra ainda não foi aprovado pela engenharia.'}
                   </div>
                 )}
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditandoContrato(true)}>{contrato ? 'Editar' : 'Definir'}</button>
+              {goto && podeMontarOrcamento && <button className="btn btn-ghost btn-sm" onClick={() => goto('orcamento-obra')}>Orçamento</button>}
             </div>
 
             {contrato && (
               <div className="card" style={{ padding: '14px 16px', marginBottom: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 14 }}>
-                <Numero nome={`MEDIDO (${fmtPct(geral.percentual)})`} valor={fmtCur(geral.medido)} />
+                <Numero nome={`MEDIDO E FECHADO (${fmtPct(geral.percentual)})`} valor={fmtCur(geral.medido)} />
                 <Numero nome="RECEBIDO" valor={fmtCur(geral.recebido)} cor="var(--success)" />
                 <Numero nome="A RECEBER" valor={fmtCur(geral.aReceber)} cor={geral.aReceber < 0 ? 'var(--warn)' : 'var(--primary)'}
                   dica={geral.aReceber < 0 ? 'recebido a mais que o medido' : 'medido e ainda não recebido'} legenda={geral.aReceber < 0 ? 'recebido a mais que o medido' : null} />
@@ -114,9 +127,9 @@ export function ContasReceberScreen({ goto, voltarPara = 'home' }) {
               </div>
             )}
 
-            {contrato && medicoes.length === 0 && (
+            {contrato && (mesesMedidos.length === 0 || mesAberto) && (
               <div className="card" style={{ padding: '10px 14px', marginBottom: 12, background: 'var(--warn-tint, #FEF3C7)', color: 'var(--text-2)', fontSize: 12.5, fontWeight: 600, boxShadow: 'none' }}>
-                ℹ️ Ainda não há medições. O valor a receber sai do percentual medido — registre em <button onClick={() => goto('medicoes')} style={{ border: 0, background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 800, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>Medições</button>.
+                ℹ️ {mesesMedidos.length === 0 ? 'Ainda não há medição fechada.' : `A medição de ${rotuloMesAno(mesAberto.mes.slice(0, 7))} está aberta e ainda não conta.`} O valor a receber sai das medições fechadas — veja em <button onClick={() => goto('medicoes')} style={{ border: 0, background: 'none', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 800, color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline' }}>Medições</button>.
               </div>
             )}
 
@@ -139,7 +152,7 @@ export function ContasReceberScreen({ goto, voltarPara = 'home' }) {
               ))}
               {meses.length === 0 && (
                 <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-                  Sem medições nem recebimentos ainda.
+                  Sem medição fechada nem recebimento ainda.
                 </div>
               )}
             </div>
@@ -168,7 +181,6 @@ export function ContasReceberScreen({ goto, voltarPara = 'home' }) {
         )}
       </div>
 
-      {editandoContrato && <ContratoPopup contrato={contrato} onFechar={() => setEditandoContrato(false)} onSalvo={() => { setEditandoContrato(false); carregar(); }} />}
       {novo && <RecebimentoPopup hoje={hoje} onFechar={() => setNovo(false)} onSalvo={() => { setNovo(false); carregar(); }} />}
     </div>
   );
@@ -181,41 +193,6 @@ function Numero({ nome, valor, cor, dica, legenda, pequeno }) {
       <div style={{ fontSize: pequeno ? 13.5 : 16, fontWeight: 900, color: cor || 'var(--text-1)' }}>{valor}</div>
       {legenda && <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--warn)', marginTop: 1 }}>{legenda}</div>}
     </div>
-  );
-}
-
-function ContratoPopup({ contrato, onFechar, onSalvo }) {
-  const [valor, setValor] = useState(contrato ? fmtCur(contrato.valor_aprovado) : '');
-  const [data, setData] = useState(contrato?.aprovado_em || '');
-  const [obs, setObs] = useState(contrato?.observacoes || '');
-  const [salvando, setSalvando] = useState(false);
-  const v = parseV(valor);
-  const pronto = v != null && v >= 0;
-
-  async function salvar() {
-    if (!pronto || salvando) return;
-    setSalvando(true);
-    // Uma linha por obra: upsert na chave única obra_id (o obra_id entra sozinho, ver obra-escopo.js).
-    const { error } = await supabase.from('obra_contrato').upsert(
-      { valor_aprovado: v, aprovado_em: data || null, observacoes: obs.trim() || null },
-      { onConflict: 'obra_id' });
-    setSalvando(false);
-    if (error) { avisarErro(error, 'salvar o valor fechado'); return; }
-    onSalvo();
-  }
-
-  return (
-    <Popup titulo="🏦 Orçamento aprovado" onFechar={onFechar}>
-      <div className="t-caption" style={{ marginBottom: 14, lineHeight: 1.5 }}>O valor total fechado com o cliente para esta obra. É sobre ele que o percentual medido vira dinheiro a receber.</div>
-      <div style={rotulo}>VALOR FECHADO *</div>
-      <input value={valor} onChange={e => setValor(fmtV(e.target.value))} placeholder="R$ 0,00" inputMode="numeric" style={{ ...campo, marginBottom: 14 }} />
-      <div style={rotulo}>DATA DA APROVAÇÃO</div>
-      <input type="date" value={data} onChange={e => setData(e.target.value)} style={{ ...campo, marginBottom: 14 }} />
-      <div style={rotulo}>OBSERVAÇÕES</div>
-      <textarea value={obs} onChange={e => setObs(e.target.value)} rows={2} placeholder="Ex.: proposta 12, aditivo…"
-        style={{ ...campo, height: 'auto', padding: '10px 14px', resize: 'none', marginBottom: 18 }} />
-      <Rodape onFechar={onFechar} onConfirmar={salvar} pronto={pronto} salvando={salvando} texto="Salvar" />
-    </Popup>
   );
 }
 

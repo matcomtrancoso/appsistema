@@ -55,7 +55,8 @@
     "created_at",
     "updated_at",
     "datas_ajustadas",
-    "obra_id"
+    "obra_id",
+    "orcamento_eap_id"
   ],
   "rdos": [
     "id",
@@ -410,6 +411,39 @@
     "valor_aprovado",
     "aprovado_em",
     "observacoes",
+    "created_at",
+    "updated_at"
+  ],
+  "orcamento_eap": [
+    "id",
+    "obra_id",
+    "codigo",
+    "pai_codigo",
+    "descricao",
+    "unidade",
+    "quantidade",
+    "preco_unitario",
+    "is_grupo",
+    "ordem",
+    "created_at",
+    "updated_at"
+  ],
+  "medicoes_mensais": [
+    "id",
+    "obra_id",
+    "mes",
+    "status",
+    "fechada_em",
+    "fechada_por_nome",
+    "created_at",
+    "updated_at"
+  ],
+  "medicao_itens": [
+    "id",
+    "obra_id",
+    "medicao_id",
+    "eap_id",
+    "percentual_acumulado",
     "created_at",
     "updated_at"
   ]

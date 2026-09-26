@@ -30,7 +30,7 @@ import { MARCA } from '../marca.js';
 import { hojeLocal } from '../lib/date';
 import { semanaDe, atividadesDoDia, chaveDoDia } from '../lib/atividades-do-dia';
 import {
-  MestreRDOv2, MestreRDOAddSheet, MestreRDOAssign, getDerivedStatus,
+  MestreRDOv2, MestreRDOAddSheet, MestreRDOAssign, getDerivedStatus, BarraDiaRDO,
 } from '../screens/mestre-rdo-v2';
 import { MestreRDOWizard } from '../screens/mestre-rdo-wizard';
 import { GaleriaFotos } from '../screens/galeria-fotos';
@@ -237,6 +237,7 @@ export default function AppEngenheiro({ profile }) {
   const aplicarPalette = (p) => { setPalette(p); try { localStorage.setItem('cr-palette', p); } catch { /* ignore */ } };
   const saveTimer = useRef(null);
   const rdoIdRef = useRef(null);
+  const cargaRdoRef = useRef(0);   // número da última carga de RDO: descarta resposta velha
   const isRemoteUpdate = useRef(false);
   const atividadesRef = useRef([]);
   useEffect(() => { atividadesRef.current = rdoAtividades; }, [rdoAtividades]);
@@ -281,7 +282,9 @@ export default function AppEngenheiro({ profile }) {
           isRemoteUpdate.current = true;
           return draft;
         });
-        if (payload.new?.submetido) setDailyState({ submitted: true });
+        // Só o RDO de HOJE mexe no "enviado hoje" do início: abrir um dia
+        // antigo para editar não pode acender o aviso de hoje.
+        if (payload.new?.submetido && payload.new?.data === hojeLocal()) setDailyState({ submitted: true });
       })
       .subscribe();
     return () => supabase.removeChannel(ch);
@@ -318,17 +321,31 @@ export default function AppEngenheiro({ profile }) {
     }, 800);
   }, [rdoEfetivo]);
 
+  // Abre o RDO de qualquer dia até hoje — e cria na hora se o dia nunca foi
+  // preenchido (era só hoje, e por isso não dava para registrar um dia
+  // esquecido). Dia futuro não abre: RDO é registro do que já aconteceu.
   async function loadRDO_eng(date) {
     const todayStr = hojeLocal();
-    if (!date) date = todayStr;
+    if (!date || date > todayStr) date = todayStr;
+    const minhaVez = ++cargaRdoRef.current;
     setRdoDate(date);
 
+    // Zera o que era do dia anterior antes de carregar: sem isso, durante a
+    // troca o auto-salvar do efetivo podia gravar o rascunho do dia velho no
+    // RDO novo. (O mestre já faz assim.)
+    rdoIdRef.current = null;
+    setRdoId(null);
+    setRdoAtividades([]);
+
     let { data: rdo } = await supabase.from('rdos').select('*').eq('data', date).maybeSingle();
-    // Auto-create only for today
-    if (!rdo && date === todayStr) {
-      const { data } = await supabase.from('rdos').insert({ data: date }).select().single();
+    if (!rdo) {
+      // upsert: se outro aparelho criar o mesmo dia ao mesmo tempo, devolve o que existe em vez de falhar.
+      const { data, error } = await supabase.from('rdos').upsert({ data: date }, { onConflict: 'obra_id,data' }).select().single();
+      if (error) console.error('Erro ao abrir o RDO de', date, error);
       rdo = data;
     }
+    // Se a pessoa já escolheu outro dia enquanto este carregava, este resultado é velho.
+    if (minhaVez !== cargaRdoRef.current) return;
     if (!rdo) {
       setRdoId(null); rdoIdRef.current = null;
       setRdoAtividades([]); setRdoEfetivo([]); setRdoSubmetido(false);
@@ -347,11 +364,16 @@ export default function AppEngenheiro({ profile }) {
       ? await supabase.from('atividades_rdo').select('*').in('rdo_id', idsSemana_e).order('created_at')
       : { data: [] };
     const dataPorRdo_e = new Map((rdosSemana_e || []).map(r => [r.id, r.data]));
+    if (minhaVez !== cargaRdoRef.current) return;   // outro dia foi escolhido no meio da carga
     setRdoAtividades(atividadesDoDia(candidatas_e || [], date, id => dataPorRdo_e.get(id)));
 
     // Sincroniza efetivo: prefere Supabase se tiver dados
     const remoteDraft = rdo.efetivo_draft;
-    const localSaved = (() => { try { const s = localStorage.getItem(EFETIVO_KEY_ENG); return s ? JSON.parse(s) : null; } catch (_) { return null; } })();
+    // A chave sai de `date` (o dia que está sendo aberto), não de EFETIVO_KEY_ENG:
+    // essa foi calculada no render anterior e ainda apontava para o dia velho,
+    // então o rascunho local lido era o do dia errado.
+    const chaveLocal = `cre_efetivo_eng_${date}`;
+    const localSaved = (() => { try { const s = localStorage.getItem(chaveLocal); return s ? JSON.parse(s) : null; } catch (_) { return null; } })();
 
     const draft = (remoteDraft && remoteDraft.length > 0) ? remoteDraft
                 : (localSaved && localSaved.length > 0)  ? localSaved
@@ -364,7 +386,7 @@ export default function AppEngenheiro({ profile }) {
     isRemoteUpdate.current = true;
     setRdoEfetivo(draft || []);
     if (draft && remoteDraft && remoteDraft.length > 0) {
-      try { localStorage.setItem(EFETIVO_KEY_ENG, JSON.stringify(draft)); } catch (_) { /* localStorage bloqueado (aba anonima, cota cheia): segue sem salvar */ }
+      try { localStorage.setItem(chaveLocal, JSON.stringify(draft)); } catch (_) { /* localStorage bloqueado (aba anonima, cota cheia): segue sem salvar */ }
     }
   }
 
@@ -441,7 +463,7 @@ export default function AppEngenheiro({ profile }) {
     // e a tela marcava concluído mesmo assim.
     if (subErr) { console.error('Erro ao finalizar o RDO:', subErr); alert('Não foi possível finalizar o diário. Verifique a conexão e envie de novo.'); return false; }
     setRdoSubmetido(true);
-    setDailyState({ submitted: true });
+    if ((rdoDate || today) === today) setDailyState({ submitted: true });
     try { localStorage.removeItem(EFETIVO_KEY_ENG); } catch (_) { /* localStorage bloqueado (aba anonima, cota cheia): segue sem salvar */ }
     return true;
   }
@@ -466,12 +488,25 @@ export default function AppEngenheiro({ profile }) {
   // veio não dá para voltar arrastando.
   const pilha = useRef([]);
   const goto = (screen, params = {}) => {
+    // O início é sempre "hoje". Se o RDO aberto era de outro dia (retroativo),
+    // solta ele aqui — senão o "Concluir" do início enviaria o dia velho.
+    if (screen === 'home' && rdoDate !== today) soltarRdoAntigo();
     if (screen !== route.screen) pilha.current = [...pilha.current.slice(-20), route];
     setRoute({ screen, params });
   };
+  function soltarRdoAntigo() {
+    cargaRdoRef.current++;
+    rdoIdRef.current = null;
+    setRdoId(null); setRdoDate(today); setRdoSubmetido(false);
+    setRdoAtividades([]); setRdoEfetivo([]);
+  }
+  // Trocar o dia dentro da própria tela do RDO (seletor de data / fita de dias).
+  const escolherDiaRdo = (dia) => { if (dia) loadRDO_eng(dia); };
   const voltar = () => {
     const anterior = pilha.current.pop();
-    setRoute(anterior || { screen: 'home', params: {} });
+    const destino = anterior || { screen: 'home', params: {} };
+    if (destino.screen === 'home' && rdoDate !== today) soltarRdoAntigo();
+    setRoute(destino);
   };
   useSwipeBack(voltar, !isDesktop);
 
@@ -528,15 +563,23 @@ export default function AppEngenheiro({ profile }) {
           efetivo={rdoEfetivo} setEfetivo={setRdoEfetivo} atividades={rdoAtividades}
           addAtividade={addAtividade_eng} rdoId={rdoId} profile={profile}
           submitDaily={submitRDO_eng}
+          activeDate={rdoDate} isRetroativo={rdoDate !== today}
+          today={today} onPickDate={escolherDiaRdo} onVoltarHoje={() => loadRDO_eng(today)}
         />
       ) : (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* O seletor de dia fica visível enquanto o RDO carrega (ou se falhar):
+            sem ele a pessoa ficava presa numa tela sem como escolher outro dia. */}
+        <BarraDiaRDO activeDate={rdoDate} today={today} isRetroativo={rdoDate !== today}
+          onPickDate={escolherDiaRdo} onVoltarHoje={() => loadRDO_eng(today)} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-3)', padding: 32 }}>
           <div style={{ fontSize: 36 }}>📋</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)' }}>Nenhum RDO iniciado hoje</div>
-          <div style={{ fontSize: 13, textAlign: 'center' }}>Inicie o RDO pela tela inicial para começar.</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-2)' }}>Abrindo o RDO…</div>
+          <div style={{ fontSize: 13, textAlign: 'center' }}>Se não abrir, volte ao início e tente de novo.</div>
           <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => goto('home')}>
             Voltar ao início
           </button>
+        </div>
         </div>
       ); break;
     case 'rdo-eng-classic':
@@ -548,6 +591,8 @@ export default function AppEngenheiro({ profile }) {
         openSheet={() => setEfetivoSheetOpen(true)}
         onSetStatus={handleSetStatus_eng} onSetExtraStatus={handleSetExtraStatus_eng}
         submitDaily={submitRDO_eng}
+        activeDate={rdoDate} today={today} isRetroativo={rdoDate !== today}
+        onPickDate={escolherDiaRdo} onVoltarHoje={() => loadRDO_eng(today)}
       />; break;
     case 'rdo-eng-assign':
       body = <MestreRDOAssign goto={(s,p) => goto(s === 'rdo' ? 'rdo-eng' : s === 'rdo-activity' ? 'rdo-eng-activity' : s, p)}

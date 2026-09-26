@@ -4,6 +4,8 @@ import { TIPOS_OCORRENCIA } from './mestre';
 import { Icon } from '../components/index';
 import { hojeLocal, toISODate } from '../lib/date';
 import { msgAmigavel } from '../lib/msg-amigavel';
+import { useObraSelecionada } from '../lib/obra-selecionada';
+import { diasSemRdo } from '../lib/rdo-lacunas.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
@@ -337,11 +339,12 @@ function RDODiaDetalhe({ rdo, onBack, onEdit }) {
             onClick={() => onEdit(rdo.data)}
             title="Editar RDO"
             style={{
-              width: 36, height: 36, borderRadius: 10, border: '0.5px solid var(--border)',
+              height: 36, padding: '0 12px', borderRadius: 10, border: '0.5px solid var(--border)',
               background: 'var(--surface-2)', cursor: 'pointer', color: 'var(--primary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexShrink: 0,
+              fontFamily: 'inherit', fontSize: 12.5, fontWeight: 800,
             }}>
-            {ICON_EDIT}
+            {ICON_EDIT} Editar
           </button>
         )}
       </div>
@@ -577,6 +580,7 @@ export function RDOHistoricoScreen({ goto, onEditRDO, params }) {
   // Quando o Efetivo manda a data, já abre esse dia em vez de largar o
   // engenheiro na lista para procurar.
   const dataPedida = params?.data;
+  const { obraAtual } = useObraSelecionada();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -635,6 +639,18 @@ export function RDOHistoricoScreen({ goto, onEditRDO, params }) {
 
   const today = todayStr();
 
+  // Dias sem RDO dentro da janela, para dar para preencher um dia esquecido
+  // com um toque — antes o histórico só listava o que já existia.
+  const janelaInicio = (() => { const d = new Date(); d.setDate(d.getDate() - 60); return toISODate(d); })();
+  const lacunas = diasSemRdo({
+    existentes: rdos.map(r => r.data), de: janelaInicio, ate: today,
+    inicioObra: obraAtual?.data_inicio || null,
+  });
+  const itens = [
+    ...rdos.map(r => ({ tipo: 'rdo', data: r.data, rdo: r })),
+    ...lacunas.map(d => ({ tipo: 'vazio', data: d })),
+  ].sort((a, b) => (a.data < b.data ? 1 : a.data > b.data ? -1 : 0));
+
   return (
     <div style={{ minHeight: '100%', background: 'var(--bg,var(--surface-2))' }}>
 
@@ -654,6 +670,17 @@ export function RDOHistoricoScreen({ goto, onEditRDO, params }) {
           <div style={{ fontSize: 17, fontWeight: 900, color: 'var(--text-1)' }}>Histórico RDO</div>
           <div style={{ fontSize: 11, color: 'var(--text-3)', fontWeight: 600 }}>Últimos 60 dias</div>
         </div>
+        {onEditRDO && (
+          <label style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, padding: '0 12px',
+              borderRadius: 10, background: 'var(--primary)', color: '#fff', fontSize: 12.5, fontWeight: 800 }}>
+              ＋ Outro dia
+            </span>
+            <input type="date" max={today} aria-label="Escolher o dia do RDO"
+              onChange={e => { if (e.target.value) onEditRDO(e.target.value); }}
+              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%' }} />
+          </label>
+        )}
       </div>
 
       {/* Resumo */}
@@ -678,6 +705,11 @@ export function RDOHistoricoScreen({ goto, onEditRDO, params }) {
           </div>
           <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.06em' }}>ATIVIDADES</div>
         </div>
+        <div style={{ width: 1, background: 'var(--border)' }} />
+        <div style={{ textAlign: 'center', flex: 1 }}>
+          <div style={{ fontSize: 22, fontWeight: 900, color: lacunas.length ? 'var(--warn, #D97706)' : 'var(--text-1)' }}>{lacunas.length}</div>
+          <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.06em' }}>SEM RDO</div>
+        </div>
       </div>
 
       {/* Lista */}
@@ -686,7 +718,7 @@ export function RDOHistoricoScreen({ goto, onEditRDO, params }) {
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-3)', fontSize: 14 }}>
             Carregando…
           </div>
-        ) : rdos.length === 0 ? (
+        ) : itens.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 20px' }}>
             <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-2)', marginBottom: 6 }}>
@@ -697,7 +729,34 @@ export function RDOHistoricoScreen({ goto, onEditRDO, params }) {
             </div>
           </div>
         ) : (
-          rdos.map(rdo => {
+          itens.map(item => {
+            if (item.tipo === 'vazio') {
+              return (
+                <button key={'vazio-' + item.data} onClick={() => onEditRDO && onEditRDO(item.data)} disabled={!onEditRDO}
+                  style={{ width: '100%', textAlign: 'left', padding: '12px 14px', borderRadius: 14,
+                    border: '1.5px dashed var(--border-strong, var(--border))', background: 'transparent',
+                    cursor: onEditRDO ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, flexShrink: 0, background: 'var(--surface-2)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: 'var(--text-3)', lineHeight: 1 }}>{parseDateLocal(item.data)?.getDate()}</div>
+                    <div style={{ fontSize: 9, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.04em' }}>
+                      {(MESES[parseDateLocal(item.data)?.getMonth()] || '').toUpperCase()}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-2)' }}>
+                      {formatDataCurta(item.data)}{item.data === today ? ' — hoje' : ''}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 2 }}>Sem RDO neste dia</div>
+                  </div>
+                  {onEditRDO && (
+                    <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 11, fontWeight: 800,
+                      background: 'var(--primary-tint)', color: 'var(--primary)', flexShrink: 0 }}>＋ Preencher</span>
+                  )}
+                </button>
+              );
+            }
+            const rdo = item.rdo;
             const isToday = rdo.data === today;
             const total  = rdo.countAtividades;
             return (

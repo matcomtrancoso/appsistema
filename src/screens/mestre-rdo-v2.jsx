@@ -127,11 +127,53 @@ function fmtDataBR(str) {
   return `${semana}, ${d}/${m}/${y}`;
 }
 
+// A barra "DATA DO RDO · Trocar dia · Hoje". Mora aqui para o RDO clássico, o
+// passo a passo (wizard) e a casca da engenharia usarem a MESMA — antes só o
+// clássico do mestre tinha, e quem abria o wizard não achava como trocar o dia.
+export function BarraDiaRDO({ activeDate, today, isRetroativo, onPickDate, onVoltarHoje }) {
+  if (!onPickDate) return null;
+  return (
+    <div style={{ padding: '10px var(--pad-4) 4px' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12,
+        background: isRetroativo ? 'rgba(217,119,6,0.10)' : 'var(--surface-2)',
+        border: isRetroativo ? '1px solid rgba(217,119,6,0.35)' : '0.5px solid var(--border)',
+      }}>
+        <span style={{ width: 18, height: 18, color: isRetroativo ? 'var(--warn, #D97706)' : 'var(--text-3)', flexShrink: 0 }}>{Icon.calendar}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: 'var(--text-3)' }}>DATA DO RDO</div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-1)' }}>
+            {fmtDataBR(activeDate)}{isRetroativo ? ' · retroativo' : ' · hoje'}
+          </div>
+        </div>
+        <label style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10,
+            background: 'var(--surface)', border: '0.5px solid var(--border)', color: 'var(--primary)',
+            fontSize: 12, fontWeight: 800,
+          }}>
+            <span style={{ width: 14, height: 14 }}>{Icon.edit}</span> Trocar dia
+          </span>
+          <input type="date" value={activeDate} max={today}
+            onChange={e => { if (e.target.value) onPickDate(e.target.value); }}
+            style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%' }} />
+        </label>
+        {isRetroativo && onVoltarHoje && (
+          <button onClick={onVoltarHoje} style={{
+            flexShrink: 0, padding: '7px 12px', borderRadius: 10, border: 'none',
+            background: 'var(--primary)', color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+          }}>Hoje</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // Linha do tempo horizontal: os últimos 21 dias como fita rolável, para pular
 // direto no dia que interessa. Substituiu o botão "ver histórico", que obrigava
 // a sair da tela para trocar de dia. A bolinha marca o dia que já tem diário
 // enviado, então dá para ver de relance qual dia ficou sem preencher.
-function LinhaDoTempoRDO({ ativo, hoje, onEscolher, onHistorico }) {
+export function LinhaDoTempoRDO({ ativo, hoje, onEscolher, onHistorico }) {
   const DIAS = 21;
   const [enviados, setEnviados] = useState(() => new Set());
   const fitaRef = useRef(null);
@@ -268,42 +310,8 @@ export function MestreRDOv2({ goto, rdoId, dailyState, atividades = [], efetivo,
         )}
       </div>
 
-      {/* Seletor de data — permite RDO retroativo */}
-      {onPickDate && (
-        <div style={{ padding: '10px var(--pad-4) 4px' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12,
-            background: isRetroativo ? 'rgba(217,119,6,0.10)' : 'var(--surface-2)',
-            border: isRetroativo ? '1px solid rgba(217,119,6,0.35)' : '0.5px solid var(--border)',
-          }}>
-            <span style={{ width: 18, height: 18, color: isRetroativo ? 'var(--warn, #D97706)' : 'var(--text-3)', flexShrink: 0 }}>{Icon.calendar}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, color: 'var(--text-3)' }}>DATA DO RDO</div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text-1)' }}>
-                {fmtDataBR(activeDate)}{isRetroativo ? '' : ' · hoje'}
-              </div>
-            </div>
-            <label style={{ position: 'relative', cursor: 'pointer', flexShrink: 0 }}>
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10,
-                background: 'var(--surface)', border: '0.5px solid var(--border)', color: 'var(--primary)',
-                fontSize: 12, fontWeight: 800,
-              }}>
-                <span style={{ width: 14, height: 14 }}>{Icon.edit}</span> Trocar dia
-              </span>
-              <input type="date" value={activeDate} max={today}
-                onChange={e => { if (e.target.value) onPickDate(e.target.value); }}
-                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer', width: '100%' }} />
-            </label>
-            {isRetroativo && onVoltarHoje && (
-              <button onClick={onVoltarHoje} style={{
-                flexShrink: 0, padding: '7px 12px', borderRadius: 10, border: 'none',
-                background: 'var(--primary)', color: '#fff', fontSize: 12, fontWeight: 800, cursor: 'pointer',
-              }}>Hoje</button>
-            )}
-          </div>
-        </div>
-      )}
+      <BarraDiaRDO activeDate={activeDate} today={today} isRetroativo={isRetroativo}
+        onPickDate={onPickDate} onVoltarHoje={onVoltarHoje} />
 
       <div style={{ padding: '0 var(--pad-4) 12px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 8 }}>

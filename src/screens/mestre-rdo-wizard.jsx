@@ -5,7 +5,7 @@ import { contem } from '../lib/busca';
 import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
 import { Icon } from '../components/index';
 import { hojeLocal } from '../lib/date';
-import { getDerivedStatus, WORKER_STATUS_OPTIONS } from './mestre-rdo-v2';
+import { getDerivedStatus, WORKER_STATUS_OPTIONS, BarraDiaRDO, LinhaDoTempoRDO } from './mestre-rdo-v2';
 import { proximoStatus, ACOES_CONCLUIDA } from '../lib/status-atividade';
 import { agruparPorAmbiente } from '../lib/atividades-do-dia';
 import { enviarFotoRDO } from '../lib/foto-rdo';
@@ -136,8 +136,9 @@ function WizardDots({ total, atual }) {
   );
 }
 
-export function MestreRDOWizard({ goto, efetivo, setEfetivo, atividades = [], addAtividade, rdoId, profile, submitDaily, activeDate, isRetroativo = false }) {
+export function MestreRDOWizard({ goto, efetivo, setEfetivo, atividades = [], addAtividade, rdoId, profile, submitDaily, activeDate, isRetroativo = false, today, onPickDate, onVoltarHoje }) {
   const dataRDO = activeDate || hojeLocal();
+  const hoje = today || hojeLocal();
   const { empresas, colaboradores, ambientes } = useObra();
   const [modo, setModo] = useState(null);   // null = tela de escolha (aparece toda vez)
   const [step, setStep] = useState(0);
@@ -150,9 +151,24 @@ export function MestreRDOWizard({ goto, efetivo, setEfetivo, atividades = [], ad
   // devolvia a pessoa para a mesma turma que ela acabou de lançar.
   const [voltas, setVoltas] = useState(0);
   const outraEquipe = () => { setFoco(null); setVoltas(v => v + 1); setStep(0); };
+  // Trocou o dia: volta para a escolha do jeito. Manter o passo antigo deixava a
+  // pessoa no meio de um fluxo de OUTRO dia, sem perceber que o diário mudou.
+  const diaAnterior = useRef(dataRDO);
+  useEffect(() => {
+    if (diaAnterior.current === dataRDO) return;
+    diaAnterior.current = dataRDO;
+    setModo(null); setStep(0); setFoco(null); setVoltas(v => v + 1);
+  }, [dataRDO]);
+
+  // Seletor de dia (só quando quem chamou sabe trocar de dia).
+  const seletorDia = onPickDate
+    ? <BarraDiaRDO activeDate={dataRDO} today={hoje} isRetroativo={isRetroativo}
+        onPickDate={onPickDate} onVoltarHoje={onVoltarHoje} />
+    : <FaixaDataWizard data={dataRDO} retroativo={isRetroativo} />;
 
   // Tela de escolha do modo — some depois que escolhe; volta ao trocar de modo.
-  if (!modo) return <EscolhaModo goto={goto} onEscolher={(m) => { setModo(m); setStep(0); }} />;
+  if (!modo) return <EscolhaModo goto={goto} ehHoje={dataRDO === hoje} onEscolher={(m) => { setModo(m); setStep(0); }}
+    topo={<>{seletorDia}{onPickDate && <LinhaDoTempoRDO ativo={dataRDO} hoje={hoje} onEscolher={onPickDate} onHistorico={() => goto('rdo-historico')} />}</>} />;
   if (modo === 'ambiente') {
     return <ModoAmbiente
       atividades={atividades} efetivo={efetivo || []} setEfetivo={setEfetivo}
@@ -177,7 +193,7 @@ export function MestreRDOWizard({ goto, efetivo, setEfetivo, atividades = [], ad
         </button>
       </div>
 
-      <FaixaDataWizard data={dataRDO} retroativo={isRetroativo} />
+      {seletorDia}
 
       <div className="page-pad" style={{ paddingTop: 14, paddingBottom: 28 }}>
         <WizardDots total={PASSOS.length} atual={step} />
@@ -831,7 +847,7 @@ function BotaoSalvarDiario({ onSalvar, onEncerrar }) {
 }
 
 // ── Tela de escolha do modo (aparece toda vez que abre o RDO) ───────────────
-function EscolhaModo({ goto, onEscolher }) {
+function EscolhaModo({ goto, onEscolher, topo, ehHoje = true }) {
   return (
     <div className="page">
       <div style={{ padding: '12px var(--pad-4) 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -840,8 +856,9 @@ function EscolhaModo({ goto, onEscolher }) {
         </button>
         <button onClick={() => goto('rdo-classic')} style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-3)', background: 'none', border: 0, cursor: 'pointer' }}>RDO clássico ›</button>
       </div>
+      {topo}
       <div className="page-pad" style={{ paddingTop: 18 }}>
-        <div style={{ fontSize: 21, fontWeight: 900, marginBottom: 5 }}>Como quer fazer hoje?</div>
+        <div style={{ fontSize: 21, fontWeight: 900, marginBottom: 5 }}>{ehHoje ? 'Como quer fazer hoje?' : 'Como quer fazer este dia?'}</div>
         <div style={{ fontSize: 13, color: 'var(--text-3)', marginBottom: 18 }}>Os dois geram o mesmo diário. Escolha o mais fácil no dia.</div>
         <EscolhaCard emoji="👥" titulo="Por equipe" desc="Marca todo mundo que veio e depois distribui nas frentes." tag="Rápido se já sabe quem veio" onClick={() => onEscolher('equipe')} />
         <EscolhaCard emoji="📍" titulo="Por ambiente" desc="Anda pela obra e vai ambiente por ambiente: quem está e o que faz." tag="Bom pra ir caminhando" onClick={() => onEscolher('ambiente')} />

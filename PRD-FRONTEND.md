@@ -209,6 +209,8 @@ Faixa "Diário de 21/09/2026 · hoje" (a data pode ser trocada para lançar um d
 
 ---
 
+**Dias sem RDO e outro dia (adicionado depois):** o histórico também lista, em linha tracejada, os dias da janela de 60 dias que ficaram **sem RDO** (exceto domingos e dias antes do início da obra), com **＋ Preencher**; e o botão **＋ Outro dia** abre o seletor de data para registrar qualquer dia até hoje. O RDO de dia anterior abre com o aviso "retroativo" e a barra **Trocar dia** (no passo a passo, no clássico e na engenharia). Editar um RDO antigo usa o botão **Editar** do detalhe.
+
 ## Tela: Planejar (Planejamento semanal)
 
 **Quem acessa:** engenharia e visitante (visitante só vê). **Chega aqui por:** barra inferior / menu lateral. `[VISTO]`

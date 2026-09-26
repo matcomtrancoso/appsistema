@@ -66,18 +66,6 @@ export default function AppMestre({ profile }) {
     return () => { ativo = false; };
   }, [route.screen]);
 
-  // Pilha simples de navegação, para o gesto de voltar arrastando funcionar.
-  const pilha = useRef([]);
-  const goto = (screen, params = {}) => {
-    if (screen !== route.screen) pilha.current = [...pilha.current.slice(-20), route];
-    setRoute({ screen, params });
-  };
-  const voltar = () => {
-    const anterior = pilha.current.pop();
-    setRoute(anterior || { screen: 'home', params: {} });
-  };
-  useSwipeBack(voltar);
-
   const today = hojeLocal();
 
   // Data ativa do RDO (padrão: hoje). Permite RDO retroativo escolhendo dia anterior.
@@ -85,6 +73,24 @@ export default function AppMestre({ profile }) {
   const isRetroativo = activeDate !== today;
   const dayKeyAtual = chaveDoDia(activeDate);   // dia da semana do RDO aberto
   const EFETIVO_KEY = `cre_efetivo_${activeDate}`;
+
+  // Pilha simples de navegação, para o gesto de voltar arrastando funcionar.
+  const pilha = useRef([]);
+  const goto = (screen, params = {}) => {
+    // O início é sempre "hoje": se o diário aberto era de outro dia
+    // (retroativo), solta ele aqui — senão o início mostraria e enviaria o dia velho.
+    if (screen === 'home' && activeDate !== today) setActiveDate(today);
+    if (screen !== route.screen) pilha.current = [...pilha.current.slice(-20), route];
+    setRoute({ screen, params });
+  };
+  const voltar = () => {
+    const anterior = pilha.current.pop();
+    const destino = anterior || { screen: 'home', params: {} };
+    if (destino.screen === 'home' && activeDate !== today) setActiveDate(today);
+    setRoute(destino);
+  };
+  useSwipeBack(voltar);
+
 
   // Abre o RDO de uma data específica (usado no retroativo) e navega para a tela do RDO.
   function abrirRDOData(dateStr) {
@@ -94,11 +100,14 @@ export default function AppMestre({ profile }) {
   }
 
 
+  const cargaRdoRef = useRef(0);   // número da última carga: descarta resposta de dia que já foi trocado
   async function loadRDO(dateStr) {
     const alvo = dateStr || today;
+    const minhaVez = ++cargaRdoRef.current;
 
     // Reset ao trocar de data (evita salvar no rdo antigo durante o carregamento)
     rdoIdRef.current = null;
+    setRdoId(null);   // sem isto o id do dia antigo seguia valendo durante a troca
     setAtividades([]);
 
     let { data: rdo } = await supabase
@@ -112,7 +121,7 @@ export default function AppMestre({ profile }) {
       if (error) console.error('Erro ao abrir o RDO de', alvo, error);
       rdo = data;
     }
-    if (!rdo) return;
+    if (!rdo || minhaVez !== cargaRdoRef.current) return;
 
     setRdoId(rdo.id);
     rdoIdRef.current = rdo.id;
@@ -130,6 +139,7 @@ export default function AppMestre({ profile }) {
       : { data: [] };
     const dataPorRdo = new Map((rdosSemana || []).map(r => [r.id, r.data]));
     const doDia = atividadesDoDia(candidatas || [], alvo, id => dataPorRdo.get(id));
+    if (minhaVez !== cargaRdoRef.current) return;   // outro dia foi escolhido no meio da carga
     setAtividades(doDia);
 
     // Sincroniza efetivo: prefere Supabase (efetivo_draft) se tiver dados
@@ -382,7 +392,8 @@ export default function AppMestre({ profile }) {
         efetivo={efetivo} setEfetivo={setEfetivo} atividades={atividades}
         addAtividade={addAtividade} rdoId={rdoId} profile={profile}
         submitDaily={submitRDO}
-        activeDate={activeDate} isRetroativo={isRetroativo} />;
+        activeDate={activeDate} isRetroativo={isRetroativo}
+        today={today} onPickDate={abrirRDOData} onVoltarHoje={() => setActiveDate(today)} />;
       break;
     case 'rdo-classic':
       body = <MestreRDOv2

@@ -587,6 +587,8 @@ export function MestreMais({ goto, profile }) {
         <MaisRow icon={'📷'} label="Galeria de fotos" sub="Fotos do RDO por dia, pavimento e ambiente" onClick={() => goto('galeria')} />
         <MaisRow icon={Icon.users} label="Efetivo histórico" sub="Histórico de colaboradores no canteiro" onClick={() => goto('efetivo')} />
         <MaisRow icon={'📏'} label="Medições" sub="Registrar o avanço físico medido no canteiro" onClick={() => goto('medicoes')} />
+        <MaisRow icon={'💸'} label="Contas a pagar" sub="Pagamento da equipe por quinzena e despesas" onClick={() => goto('pagar')} />
+        <MaisRow icon={'🏦'} label="Contas a receber" sub="Valor fechado, medido e recebido mês a mês" onClick={() => goto('receber')} />
         <MaisRow icon={Icon.cog} label="Configurações" sub="Obra atual e trocar de obra" onClick={() => goto('configuracoes')} />
         {profile?.is_admin && (
           <MaisRow icon={'🏗️'} label="Gerenciar obras" sub="Criar, editar e liberar acesso por obra" onClick={() => goto('obras')} />

@@ -33,8 +33,9 @@ t('obras não é "da obra" (é a própria tabela de obras)', ehTabelaDaObra('obr
 // Lista exata, não só o tamanho: um nome trocado por engano (typo, tabela
 // renomeada) mantém o tamanho e passaria batido num teste só de `.length`.
 // As 20 primeiras têm que bater com `tabelas` em
-// supabase/migrations/20260921-multiobra-fatia1-preparar.sql; as duas
-// últimas, com supabase/migrations/20260922-orcamentos-medicoes.sql.
+// supabase/migrations/20260921-multiobra-fatia1-preparar.sql; as cinco
+// últimas, com supabase/migrations/20260922-orcamentos-medicoes.sql e
+// 20260926-contas-pagar-receber.sql.
 const TABELAS_ESPERADAS = [
   'ambientes', 'cronograma_itens', 'cronograma_avanco',
   'rdos', 'atividades_rdo', 'efetivo_rdo', 'ocorrencias', 'rdo_fotos',
@@ -44,6 +45,7 @@ const TABELAS_ESPERADAS = [
   'planta_etapas', 'plantas_visuais', 'planta_marcacoes',
   'reunioes', 'visitas',
   'orcamento_itens', 'medicoes_obra',
+  'contas_pagar', 'recebimentos', 'obra_contrato',
 ].sort();
 t('lista de tabelas da obra bate com a da migration, nome a nome',
   JSON.stringify([...TABELAS_DA_OBRA].sort()) === JSON.stringify(TABELAS_ESPERADAS));

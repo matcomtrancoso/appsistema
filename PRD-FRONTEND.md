@@ -36,8 +36,8 @@ Login
 └── Engenharia / Visitante
     ├── Barra inferior (celular): Início · Planejar · Pendências · Visitas · Cronograma
     ├── Menu lateral (computador): Início · Planejar · Cronograma · Medições · Efetivo · Pendências ·
-    │                              Visitas · Contratações · Orçamentos · Projetos · Gestão visual ·
-    │                              Equipamentos · Fotos · Cadastros · Relatórios
+    │                              Visitas · Contratações · Orçamentos · Contas a pagar · Contas a receber ·
+    │                              Projetos · Gestão visual · Equipamentos · Fotos · Cadastros · Relatórios
     ├── Início ── atalhos: Efetivo · Cronograma · Pendências · Equipamentos · Contratações ·
     │             Projetos · Gestão visual · Visitas · Fotos · Relatórios
     ├── Menu do avatar: Configurações · Gerenciar obras e Painel de admin (só admin) · Outras telas · Tema · Sair da conta
@@ -54,7 +54,7 @@ Login
     ├── Barra inferior: Início · Diário · Pendências · Equipamentos · Mais
     ├── Início (RDO de hoje, efetivo, galeria, atividades de hoje)
     ├── Diário → Por equipe | Clássico → atividade → Resumo → Enviar; Ocorrência
-    └── Mais → Pendências · Galeria de fotos · Efetivo histórico
+    └── Mais → Pendências · Galeria de fotos · Efetivo histórico · Medições · Contas a pagar · Contas a receber · Configurações
 ```
 
 ---
@@ -331,6 +331,22 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 **Campos e informações:** ver `medicoes_obra` (data, percentual 0–100, observações, responsável).
 **Ações:** registrar nova medição (uma por dia); apagar (não existe editar — apaga e registra de novo).
 **Estado vazio:** "Nenhuma medição registrada ainda."
+
+## Tela: Contas a pagar
+
+**Quem acessa:** engenharia e mestre (o mestre chega por **Mais**). **Visitante não vê** (some do menu e o banco recusa). `[VISTO]`
+**Aba Mão de obra:** navegador de **quinzena** (1ª: dias 1–15; 2ª: 16–fim do mês). Para cada pessoa da equipe própria (ADM): **dias presente** (toque para ver as datas), **diária** (editável, salva ao sair do campo) e o subtotal. Conta como presente quem aparece no efetivo de um RDO — enviado ou em rascunho — como ADM (própria), uma vez por dia. **Pagar** abre o resumo (dias × diária, **adicional**, **desconto**, data do pagamento, total) e confirma; a linha vira "✓ pago em dd/mm" e **Desfazer** devolve para "a pagar". Topo: **a pagar**, **já pago**, **pessoas**; aviso de quantas pessoas estão sem diária.
+**Aba Despesas:** navegador de **mês** (pelo vencimento). Cartões com descrição, categoria, vencimento, valor e situação (**em aberto**, **vencida**, **paga**). **Nova despesa** (descrição, categoria, valor, vencimento, "já foi paga"); **Marcar como paga** / **Reabrir**; apagar. Topo: em aberto, pago, total do mês.
+**Campos e informações:** ver `contas_pagar` e `colaboradores.valor_diaria`.
+**Estado vazio:** "Ninguém da equipe própria apareceu nos RDOs desta quinzena." / "Nenhuma despesa com vencimento em mês/ano."
+
+## Tela: Contas a receber
+
+**Quem acessa:** engenharia e mestre (o mestre chega por **Mais**). **Visitante não vê** (some do menu e o banco recusa). `[VISTO]`
+**O que aparece:** **Orçamento aprovado (valor fechado)** com **Definir/Editar**; números do topo — **medido** (% acumulado da última medição × valor), **recebido**, **a receber** (medido − recebido) e **falta medir**; **Mês a mês** (medido no mês, recebido no mês, saldo acumulado, do primeiro mês com movimento até o atual); **Recebimentos lançados** (data, valor, descrição) com **＋ Recebimento** e apagar.
+**Campos e informações:** ver `obra_contrato`, `recebimentos` e `medicoes_obra` (o percentual vem da tela **Medições**).
+**Regras:** sem medições, o medido é zero e a tela avisa (com atalho para Medições) — se já houver recebimento, o "a receber" fica negativo, escrito "recebido a mais que o medido"; sem o valor fechado definido, a tela mostra só o total recebido e pede para definir (não há tabela mês a mês). O mês a mês vai do primeiro mês com movimento até o mês atual — ou até o mês de um lançamento futuro, se houver.
+**Estado vazio:** "Sem medições nem recebimentos ainda." / "Nenhum recebimento lançado ainda."
 
 ## Tela: Projetos
 

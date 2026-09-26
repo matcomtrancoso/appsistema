@@ -330,6 +330,58 @@ O percentual de avanço físico que alguém mediu no canteiro e registrou por da
 
 Não existe edição pela tela — só apagar e registrar de novo (a chave única por dia não deixa duplicar).
 
+### Tabela `contas_pagar`
+Dois tipos de conta numa tabela só: o pagamento de **uma pessoa da equipe própria numa quinzena** (`mao_de_obra`) e **despesas** lançadas à mão (`despesa`). Telas **Contas a pagar** (abas Mão de obra e Despesas).
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras` |
+| tipo | text | sim | CHECK: `mao_de_obra`, `despesa` |
+| descricao, categoria | text | sim | padrão vazio; categoria é texto livre |
+| colaborador_id | uuid | não | FK `colaboradores`; ao apagar, fica sem id (o nome permanece) |
+| colaborador_nome | text | só `mao_de_obra` | ligação por nome, como no resto da base |
+| competencia_inicio, competencia_fim | date | só `mao_de_obra` | a quinzena paga (1–15 ou 16–fim do mês) |
+| dias | integer | sim | dias presente no pagamento (retrato); CHECK ≥ 0 |
+| valor_diaria | numeric | sim | **dinheiro**; retrato da diária no dia do pagamento |
+| ajuste | numeric | sim | adicional − desconto, com sinal |
+| valor | numeric | sim | **dinheiro**, total pago/a pagar; CHECK ≥ 0 |
+| vencimento | date | não | usado nas despesas |
+| status | text | sim | CHECK: `aberto`, `pago`; `pago` exige `pago_em` |
+| pago_em | date | não | |
+| observacoes | text | não | |
+| created_at, updated_at | timestamptz | sim | `updated_at` por gatilho |
+
+Chave única parcial: (`obra_id`, minúsculo de `colaborador_nome`, `competencia_inicio`) só para `mao_de_obra` — ninguém é pago duas vezes na mesma quinzena. CHECKs: `valor >= 0`, `dias >= 0`, `valor_diaria >= 0`; `mao_de_obra` exige nome e quinzena; `pago` exige `pago_em`; `despesa` exige `vencimento` e `valor > 0`. Índices: `obra_id`, `(obra_id, competencia_inicio)`, `(obra_id, vencimento)`, `colaborador_id`.
+
+**Acesso (as três tabelas financeiras — `contas_pagar`, `recebimentos`, `obra_contrato`):** RLS **por obra desde já** — lê e grava só quem **não é visitante** e tem a obra em `minhas_obras()` (administrador vê todas). É mais rígido que o resto da base (que só chega a isso na fatia 3) de propósito: é dinheiro e salário. Mestre e engenharia continuam iguais entre si.
+
+### Tabela `recebimentos`
+Dinheiro que entrou (o cliente pagou), lançado à mão. Tela **Contas a receber**.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras` |
+| data | date | sim | |
+| valor | numeric | sim | **dinheiro**; CHECK > 0 |
+| descricao | text | sim | padrão vazio |
+| created_at, updated_at | timestamptz | sim | |
+
+### Tabela `obra_contrato`
+O **valor fechado com o cliente** (orçamento aprovado) de cada obra. O "a receber" sai de % medido (`medicoes_obra`) × este valor.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| obra_id | uuid | sim | FK `obras`; **única** — uma linha por obra |
+| valor_aprovado | numeric | sim | **dinheiro**; CHECK ≥ 0 |
+| aprovado_em | date | não | |
+| observacoes | text | não | |
+| created_at, updated_at | timestamptz | sim | |
+
+Também: `colaboradores.valor_diaria` (numeric, nulo, CHECK `>= 0`) — quanto vale o dia da pessoa, usado para calcular a quinzena. **Global entre obras** (a tabela não tem `obra_id`) e legível pelo visitante, que lê `colaboradores`.
+
 ### Tabela `contratacoes_responsaveis`
 Lista de quem responde pelas contratações.
 

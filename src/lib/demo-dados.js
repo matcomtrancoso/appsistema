@@ -20,8 +20,8 @@ const EMPREITEIROS = [
 ];
 
 const COLABORADORES = [
-  { id: 'c1', nome: 'Carlos Menezes',  funcao: 'Pedreiro',   empreiteiro_id: 'e1', empreiteiro: EMPREITEIROS[0] },
-  { id: 'c2', nome: 'Rafael Duarte',   funcao: 'Servente',   empreiteiro_id: 'e1', empreiteiro: EMPREITEIROS[0] },
+  { id: 'c1', nome: 'Carlos Menezes',  funcao: 'Pedreiro',   empreiteiro_id: 'e1', empreiteiro: EMPREITEIROS[0], valor_diaria: 180 },
+  { id: 'c2', nome: 'Rafael Duarte',   funcao: 'Servente',   empreiteiro_id: 'e1', empreiteiro: EMPREITEIROS[0], valor_diaria: 120 },
   { id: 'c3', nome: 'Marina Alves',    funcao: 'Eletricista', empreiteiro_id: 'e2', empreiteiro: EMPREITEIROS[1] },
   { id: 'c4', nome: 'Pedro Bastos',    funcao: 'Encanador',  empreiteiro_id: 'e3', empreiteiro: EMPREITEIROS[2] },
   { id: 'c5', nome: 'Lucas Ferreira',  funcao: 'Pedreiro',   empreiteiro_id: 'e1', empreiteiro: EMPREITEIROS[0] },
@@ -59,9 +59,9 @@ export const DADOS_DEMO = {
   }],
 
   rdos: [
-    { id: RDO_HOJE, data: iso(hoje), submetido: false, submetido_por_nome: null, efetivo_draft: [] },
-    { id: 'r2', data: maisDias(-1), submetido: true, submetido_por_nome: 'João', efetivo_draft: [] },
-    { id: 'r3', data: maisDias(-2), submetido: true, submetido_por_nome: 'João', efetivo_draft: [] },
+    { id: RDO_HOJE, data: iso(hoje), submetido: false, submetido_por_nome: null, efetivo_draft: [{ nome: 'Carlos Menezes', colab_id: 'c1', empresa_nome: 'ADM (própria)', is_adm: true }, { nome: 'Rafael Duarte', colab_id: 'c2', empresa_nome: 'ADM (própria)', is_adm: true }] },
+    { id: 'r2', data: maisDias(-1), submetido: true, submetido_por_nome: 'João', efetivo_draft: [{ nome: 'Carlos Menezes', colab_id: 'c1', empresa_nome: 'ADM (própria)', is_adm: true }, { nome: 'Rafael Duarte', colab_id: 'c2', empresa_nome: 'ADM (própria)', is_adm: true }] },
+    { id: 'r3', data: maisDias(-2), submetido: true, submetido_por_nome: 'João', efetivo_draft: [{ nome: 'Carlos Menezes', colab_id: 'c1', empresa_nome: 'ADM (própria)', is_adm: true }] },
   ],
 
   atividades_rdo: [
@@ -108,6 +108,18 @@ export const DADOS_DEMO = {
     { id: 'oi2', contratacao_id: 'k1', descricao: 'Porta balcão', unidade: 'un', quantidade: 6, preco_unitario: 2200, ordem: 1 },
     { id: 'oi3', contratacao_id: 'k1', descricao: 'Instalação e vedação', unidade: 'vb', quantidade: 1, preco_unitario: 8600, ordem: 2 },
   ],
+  // Financeiro: valor fechado, recebimentos e despesas. (O demo ignora filtros,
+  // então a mão de obra paga não entra aqui — a tela filtra por tipo também.)
+  obra_contrato: [{ id: 'oc1', valor_aprovado: 480000, aprovado_em: maisDias(-100), observacoes: 'Proposta 12' }],
+  recebimentos: [
+    { id: 'rc2', data: maisDias(-8), valor: 60000, descricao: '2ª medição' },
+    { id: 'rc1', data: maisDias(-38), valor: 48000, descricao: '1ª medição' },
+  ],
+  contas_pagar: [
+    { id: 'cp1', tipo: 'despesa', descricao: 'Cimento CP-II — 40 sacos', categoria: 'Material', valor: 1680, vencimento: maisDias(3), status: 'aberto', pago_em: null },
+    { id: 'cp2', tipo: 'despesa', descricao: 'Aluguel do container', categoria: 'Aluguel', valor: 900, vencimento: maisDias(-2), status: 'pago', pago_em: maisDias(-2) },
+  ],
+
   // Ordem já do mais recente pro mais antigo: o modo demo ignora .order()
   // (ver src/lib/demo.js), então a lista só sai na ordem certa se já nascer
   // assim aqui.

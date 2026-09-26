@@ -50,3 +50,27 @@ export function diasRestantes(iso) {
   hoje.setHours(12, 0, 0, 0);
   return Math.round((alvo - hoje) / 86400000);
 }
+
+// ── Data para exibir e mês ('AAAA-MM') ───────────────────────────────────────
+export const MESES_CURTOS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+/** '2026-09-05' -> '05/09/2026' */
+export function fmtDataBR(iso) {
+  return iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}/${String(iso).slice(0, 4)}` : '';
+}
+
+/** '2026-09' -> 'set/2026' */
+export function rotuloMesAno(ym) {
+  return `${MESES_CURTOS[Number(ym.slice(5, 7)) - 1]}/${ym.slice(0, 4)}`;
+}
+
+/** Soma `n` meses a um mês 'AAAA-MM' ('2026-12', 1 -> '2027-01'). */
+export function somaMesesYM(ym, n) {
+  return addMonthsISO(`${ym}-01`, n).slice(0, 7);
+}
+
+/** Primeiro e último dia de um mês 'AAAA-MM' (o intervalo que o banco compara). */
+export function faixaDoMes(ym) {
+  const ultimo = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate();
+  return { inicio: `${ym}-01`, fim: `${ym}-${String(ultimo).padStart(2, '0')}` };
+}

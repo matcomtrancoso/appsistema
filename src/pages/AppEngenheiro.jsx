@@ -25,6 +25,8 @@ import { ObrasScreen } from '../screens/obras';
 import { ConfiguracoesScreen } from '../screens/configuracoes';
 import { OrcamentosScreen } from '../screens/orcamentos';
 import { MedicoesScreen } from '../screens/medicoes';
+import { ContasPagarScreen } from '../screens/contas-pagar';
+import { ContasReceberScreen } from '../screens/contas-receber';
 import { useObraSelecionada } from '../lib/obra-selecionada';
 import { MARCA } from '../marca.js';
 import { hojeLocal } from '../lib/date';
@@ -521,6 +523,11 @@ export default function AppEngenheiro({ profile }) {
     { key: 'atas',         label: 'Visitas',         icon: Icon.users },
     { key: 'contratacoes', label: 'Contrata\xe7\xf5es', icon: Icon.clipboard },
     { key: 'orcamentos',   label: 'Or\xe7amentos',    icon: '💰' },
+    // Salário e valor fechado: o visitante (cliente, arquiteto...) não entra — e o banco também recusa.
+    ...(profile?.role === 'visitante' ? [] : [
+      { key: 'pagar',        label: 'Contas a pagar',   icon: '💸' },
+      { key: 'receber',      label: 'Contas a receber', icon: '🏦' },
+    ]),
     { key: 'projetos',     label: 'Projetos',        icon: Icon.ruler },
     { key: 'gestao-visual', label: 'Gest\xe3o visual', icon: Icon.eye },
     { key: 'equipamentos', label: 'Equipamentos',    icon: Icon.wrench },
@@ -619,6 +626,8 @@ export default function AppEngenheiro({ profile }) {
     case 'rdo-historico':    body = <RDOHistoricoScreen goto={goto} params={route.params} onEditRDO={(date) => { loadRDO_eng(date); goto('rdo-eng', { date }); }} />; break;
     case 'contratacoes':     body = <ContratacoesScreen goto={goto} />; break;
     case 'orcamentos':       body = <OrcamentosScreen goto={goto} />; break;
+    case 'pagar':            body = <ContasPagarScreen goto={goto} />; break;
+    case 'receber':          body = <ContasReceberScreen goto={goto} />; break;
     case 'medicoes':         body = <MedicoesScreen goto={goto} profile={profile} />; break;
     case 'projetos':         body = <ProjetosScreen goto={goto} />; break;
     case 'cronograma':       body = <CronogramaScreen isDesktop={isDesktop} />; break;

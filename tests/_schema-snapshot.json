@@ -98,7 +98,8 @@
     "created_at",
     "ativo",
     "pendente_revisao",
-    "cadastrado_por"
+    "cadastrado_por",
+    "valor_diaria"
   ],
   "contratacoes_responsaveis": [
     "id",
@@ -372,5 +373,44 @@
     "obra_id",
     "user_id",
     "created_at"
+  ],
+  "contas_pagar": [
+    "id",
+    "obra_id",
+    "tipo",
+    "descricao",
+    "categoria",
+    "colaborador_id",
+    "colaborador_nome",
+    "competencia_inicio",
+    "competencia_fim",
+    "dias",
+    "valor_diaria",
+    "ajuste",
+    "valor",
+    "vencimento",
+    "status",
+    "pago_em",
+    "observacoes",
+    "created_at",
+    "updated_at"
+  ],
+  "recebimentos": [
+    "id",
+    "obra_id",
+    "data",
+    "valor",
+    "descricao",
+    "created_at",
+    "updated_at"
+  ],
+  "obra_contrato": [
+    "id",
+    "obra_id",
+    "valor_aprovado",
+    "aprovado_em",
+    "observacoes",
+    "created_at",
+    "updated_at"
   ]
 }

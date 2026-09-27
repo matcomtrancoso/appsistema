@@ -497,6 +497,7 @@ export default function AppMestre({ profile }) {
           efetivo={efetivo}
           setEfetivo={setEfetivo}
           onClose={() => setEfetivoSheetOpen(false)}
+          goto={goto}
         />
       </Sheet>
     </div>

@@ -240,6 +240,21 @@ export function MestreHome({ goto, dailyState, atividades = [], efetivo = [], su
         </div>
       </div>
 
+      {/* Cadastros: onde entram oficiais, ajudantes e fornecedores — na Início
+          porque é o que mais gente procurava sem achar (ficava só em Mais). */}
+      <div className="page-pad" style={{ paddingTop: 8 }}>
+        <div className="row tap" onClick={() => goto('cadastros')} style={{ background: 'var(--primary)', boxShadow: 'none' }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.2)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ width: 20, height: 20 }}>{Icon.cog}</span>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div className="t-strong" style={{ fontSize: 15, color: '#fff' }}>Cadastros</div>
+            <div className="t-caption" style={{ color: 'rgba(255,255,255,0.85)' }}>Adicionar oficiais, ajudantes e fornecedores</div>
+          </div>
+          <span style={{ width: 16, height: 16, color: 'rgba(255,255,255,0.85)' }}>{Icon.chevR}</span>
+        </div>
+      </div>
+
       {/* Galeria de fotos */}
       <div className="page-pad" style={{ paddingTop: 8 }}>
         <div className="row tap" onClick={() => goto('galeria')} style={{ background: 'var(--surface)', boxShadow: 'inset 0 0 0 0.5px var(--border)' }}>
@@ -583,6 +598,7 @@ export function MestreMais({ goto, profile }) {
     <div className="page">
       <PageHeader eyebrow="MENU" title="Mais" />
       <div className="page-pad stack stack-2">
+        <MaisRow icon={Icon.cog} label="Cadastros" sub="Oficiais, ajudantes e fornecedores da obra" onClick={() => goto('cadastros')} destaque />
         <MaisRow icon={Icon.alert} label="Pendências" sub="Checklists e pendências da obra" onClick={() => goto('checklist')} />
         <MaisRow icon={'📷'} label="Galeria de fotos" sub="Fotos do RDO por dia, pavimento e ambiente" onClick={() => goto('galeria')} />
         <MaisRow icon={Icon.users} label="Efetivo histórico" sub="Histórico de colaboradores no canteiro" onClick={() => goto('efetivo')} />
@@ -598,17 +614,20 @@ export function MestreMais({ goto, profile }) {
   );
 }
 
-function MaisRow({ icon, label, sub, onClick }) {
+// `destaque` chama mais atenção (fundo cheio, ícone branco) — para o item do
+// topo, o que a pessoa mais precisa achar rápido.
+function MaisRow({ icon, label, sub, onClick, destaque }) {
   return (
-    <div className="row tap" onClick={onClick}>
-      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--primary-tint)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="row tap" onClick={onClick} style={destaque ? { background: 'var(--primary)', boxShadow: 'none' } : undefined}>
+      <div style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: destaque ? 'rgba(255,255,255,0.2)' : 'var(--primary-tint)', color: destaque ? '#fff' : 'var(--primary)' }}>
         <span style={{ width: 20, height: 20 }}>{icon}</span>
       </div>
       <div style={{ flex: 1 }}>
-        <div className="t-strong" style={{ fontSize: 15 }}>{label}</div>
-        {sub && <div className="t-caption">{sub}</div>}
+        <div className="t-strong" style={{ fontSize: 15, color: destaque ? '#fff' : undefined }}>{label}</div>
+        {sub && <div className="t-caption" style={destaque ? { color: 'rgba(255,255,255,0.85)' } : undefined}>{sub}</div>}
       </div>
-      <span style={{ width: 16, height: 16, color: 'var(--text-3)' }}>{Icon.chevR}</span>
+      <span style={{ width: 16, height: 16, color: destaque ? 'rgba(255,255,255,0.85)' : 'var(--text-3)' }}>{Icon.chevR}</span>
     </div>
   );
 }

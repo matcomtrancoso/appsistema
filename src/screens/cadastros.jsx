@@ -31,13 +31,13 @@ const CORES = [
 ];
 
 // ── Tela principal ──────────────────────────────────────────────────────────
-export function EngCadastros({ goto }) {
+export function EngCadastros({ goto, voltarPara = 'home' }) {
   const [tab, setTab] = useState('empreiteiros');
 
   return (
     <div className="page">
       <div style={{ padding: '12px var(--pad-4) 0' }}>
-        <button className="btn btn-ghost btn-sm" style={{ paddingLeft: 0 }} onClick={() => goto('mais')}>
+        <button className="btn btn-ghost btn-sm" style={{ paddingLeft: 0 }} onClick={() => goto(voltarPara)}>
           <span style={{ width: 18, height: 18 }}>{Icon.back}</span> Voltar
         </button>
       </div>

@@ -700,6 +700,7 @@ export default function AppEngenheiro({ profile }) {
                 open={efetivoSheetOpen} onClose={() => setEfetivoSheetOpen(false)}
                 efetivo={rdoEfetivo} setEfetivo={setRdoEfetivo}
                 atividades={rdoAtividades} rdoId={rdoId}
+                goto={goto}
               />
             </div>
           </div>

@@ -706,7 +706,7 @@ function WorkerCard({ w, empresa, atividades = [], onAssign, onToggleAdm, onRemo
 }
 
 // ── M02b: Add worker sheet ────────────────────────────────────────────────
-export function MestreRDOAddSheet({ onClose, efetivo, setEfetivo }) {
+export function MestreRDOAddSheet({ onClose, efetivo, setEfetivo, goto }) {
   const { empresas, colaboradores, reload, profile } = useObra();
   const [tab, setTab] = useState('cadastro');
   const [salvandoNovo, setSalvandoNovo] = useState(false);
@@ -823,7 +823,11 @@ export function MestreRDOAddSheet({ onClose, efetivo, setEfetivo }) {
           {colaboradores.length === 0 && (
             <div className="card" style={{ textAlign: 'center', padding: '28px 12px' }}>
               <div className="t-strong">Nenhum colaborador cadastrado</div>
-              <div className="t-caption" style={{ marginTop: 4 }}>Adicione colaboradores em Mais → Cadastros base.</div>
+              <div className="t-caption" style={{ marginTop: 4 }}>Cadastre em Início → Cadastros, ou use "Adicionar avulso" ao lado.</div>
+              {goto && (
+                <button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }}
+                  onClick={() => { onClose(); goto('cadastros'); }}>Abrir Cadastros</button>
+              )}
             </div>
           )}
 

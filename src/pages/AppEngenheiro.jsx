@@ -219,7 +219,7 @@ function BarraLateral({ expandida, setExpandida, nav, ativo, goto, profile, abri
 }
 
 export default function AppEngenheiro({ profile }) {
-  const { obraAtual, obras, trocarObra } = useObraSelecionada();
+  const { obraId, obraAtual, obras, trocarObra } = useObraSelecionada();
   const [route, setRoute] = useState({ screen: 'home', params: {} });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetDate, setSheetDate] = useState(null);
@@ -269,9 +269,12 @@ export default function AppEngenheiro({ profile }) {
   }, []);
 
   const today = hojeLocal();
-  // Chave por data do RDO aberto (era sempre "hoje", então abrir um dia
-  // passado no histórico carregava o efetivo de hoje por cima dele).
-  const EFETIVO_KEY_ENG = `cre_efetivo_eng_${rdoDate || today}`;
+  // Chave por obra + data do RDO aberto (era só por data, então duas obras com
+  // RDO no mesmo dia liam e sobrescreviam o rascunho uma da outra — o
+  // localStorage não é resetado quando o app troca de obra). Era sempre "hoje"
+  // antes disso, então abrir um dia passado no histórico carregava o efetivo
+  // de hoje por cima dele.
+  const EFETIVO_KEY_ENG = `cre_efetivo_eng_${obraId}_${rdoDate || today}`;
 
   // ── Realtime: atualiza efetivo quando mestre altera efetivo_draft ──────────
   useEffect(() => {
@@ -374,8 +377,10 @@ export default function AppEngenheiro({ profile }) {
     const remoteDraft = rdo.efetivo_draft;
     // A chave sai de `date` (o dia que está sendo aberto), não de EFETIVO_KEY_ENG:
     // essa foi calculada no render anterior e ainda apontava para o dia velho,
-    // então o rascunho local lido era o do dia errado.
-    const chaveLocal = `cre_efetivo_eng_${date}`;
+    // então o rascunho local lido era o do dia errado. Sempre com `obraId`
+    // junto (ver o comentário de EFETIVO_KEY_ENG) para não ler o rascunho de
+    // outra obra que tenha RDO no mesmo dia.
+    const chaveLocal = `cre_efetivo_eng_${obraId}_${date}`;
     const localSaved = (() => { try { const s = localStorage.getItem(chaveLocal); return s ? JSON.parse(s) : null; } catch (_) { return null; } })();
 
     const draft = (remoteDraft && remoteDraft.length > 0) ? remoteDraft

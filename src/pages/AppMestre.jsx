@@ -37,7 +37,7 @@ function loginInitialM(profile) {
 
 
 export default function AppMestre({ profile }) {
-  const { obraAtual, obras } = useObraSelecionada();
+  const { obraId, obraAtual, obras } = useObraSelecionada();
   const [route, setRoute] = useState({ screen: 'home', params: {} });
   const [efetivoSheetOpen, setEfetivoSheetOpen] = useState(false);
   const ini = loginInitialM(profile);
@@ -74,7 +74,10 @@ export default function AppMestre({ profile }) {
   const [activeDate, setActiveDate] = useState(today);
   const isRetroativo = activeDate !== today;
   const dayKeyAtual = chaveDoDia(activeDate);   // dia da semana do RDO aberto
-  const EFETIVO_KEY = `cre_efetivo_${activeDate}`;
+  // Por obra + data: sem o obra_id, duas obras com RDO no mesmo dia liam e
+  // sobrescreviam o rascunho uma da outra (o localStorage não é resetado
+  // quando o app troca de obra, só o estado do React).
+  const EFETIVO_KEY = `cre_efetivo_${obraId}_${activeDate}`;
 
   // Pilha simples de navegação, para o gesto de voltar arrastando funcionar.
   const pilha = useRef([]);

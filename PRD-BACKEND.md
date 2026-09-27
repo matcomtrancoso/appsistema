@@ -380,7 +380,7 @@ Dois tipos de conta numa tabela só: o pagamento de **uma pessoa da equipe próp
 | descricao, categoria | text | sim | padrão vazio; categoria é texto livre |
 | colaborador_id | uuid | não | FK `colaboradores`; ao apagar, fica sem id (o nome permanece) |
 | colaborador_nome | text | só `mao_de_obra` | ligação por nome, como no resto da base |
-| competencia_inicio, competencia_fim | date | só `mao_de_obra` | a quinzena paga (1–15 ou 16–fim do mês) |
+| competencia_inicio, competencia_fim | date | só `mao_de_obra` | a quinzena paga — ciclo fixo de 14 dias, ancorado em 12/09/2026 (`quinzenaDe` em `src/lib/pagar.js`); pode atravessar o mês |
 | dias | integer | sim | dias presente no pagamento (retrato); CHECK ≥ 0 |
 | valor_diaria | numeric | sim | **dinheiro**; retrato da diária no dia do pagamento |
 | ajuste | numeric | sim | adicional − desconto, com sinal |

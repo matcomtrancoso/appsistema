@@ -4,6 +4,7 @@ import { useObra } from '../lib/ObraContext';
 import { Icon, PageHeader, Avatar, ConfirmDialog } from '../components/index';
 import { apagarLinha } from '../lib/excluir';
 import { avisarErro, comPrazo } from '../lib/msg-amigavel';
+import { fmtV, parseV, fmtCur } from '../lib/moeda.js';
 // Apagar cadastro é só da engenharia (regra no banco). O aviso mora aqui, em
 // escopo de módulo, porque três componentes desta tela removem cadastros.
 async function apagarComAviso(tabela, id, oQue) {
@@ -293,18 +294,21 @@ function ColaboradoresList() {
   const [nome, setNome] = useState('');
   const [funcao, setFuncao] = useState('Oficial');
   const [empId, setEmpId] = useState(null);
+  const [diaria, setDiaria] = useState('');
   const [saving, setSaving] = useState(false);
 
   // form edit
   const [editNome, setEditNome] = useState('');
   const [editFuncao, setEditFuncao] = useState('Oficial');
   const [editEmpId, setEditEmpId] = useState(null);
+  const [editDiaria, setEditDiaria] = useState('');
 
   const openEdit = (c) => {
     setEditingId(c.id);
     setEditNome(c.nome);
     setEditFuncao(c.funcao || 'Oficial');
     setEditEmpId(c.empreiteiro_id || null);
+    setEditDiaria(c.valor_diaria != null ? fmtCur(c.valor_diaria) : '');
     setAdding(false);
   };
 
@@ -316,7 +320,7 @@ function ColaboradoresList() {
     const iniciais = editNome.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase();
     try {
       const ok = await gravar(supabase.from('colaboradores')
-        .update({ nome: editNome.trim(), funcao: editFuncao, empreiteiro_id: editEmpId, iniciais })
+        .update({ nome: editNome.trim(), funcao: editFuncao, empreiteiro_id: editEmpId, iniciais, valor_diaria: parseV(editDiaria) })
         .eq('id', editingId), 'salvar o colaborador');
       if (!ok) return;
       await reload();
@@ -332,11 +336,11 @@ function ColaboradoresList() {
     const iniciais = nome.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase();
     try {
       const ok = await gravar(supabase.from('colaboradores').insert({
-        nome: nome.trim(), funcao, empreiteiro_id: empId, iniciais, ativo: true,
+        nome: nome.trim(), funcao, empreiteiro_id: empId, iniciais, ativo: true, valor_diaria: parseV(diaria),
       }), 'salvar o colaborador');
       if (!ok) return;
       await reload();
-      setNome(''); setFuncao('Oficial'); setEmpId(null);
+      setNome(''); setFuncao('Oficial'); setEmpId(null); setDiaria('');
       setAdding(false);
     } finally {
       setSaving(false);
@@ -350,11 +354,11 @@ function ColaboradoresList() {
     const iniciais = nome.trim().split(/\s+/).slice(0, 2).map(s => s[0]).join('').toUpperCase();
     try {
       const ok = await gravar(supabase.from('colaboradores').insert({
-        nome: nome.trim(), funcao, empreiteiro_id: key === '__adm' ? null : key, iniciais, ativo: true,
+        nome: nome.trim(), funcao, empreiteiro_id: key === '__adm' ? null : key, iniciais, ativo: true, valor_diaria: parseV(diaria),
       }), 'salvar o colaborador');
       if (!ok) return;
       await reload();
-      setNome(''); setFuncao('Oficial'); setAddingGroupKey(null);
+      setNome(''); setFuncao('Oficial'); setDiaria(''); setAddingGroupKey(null);
     } finally {
       setSaving(false);
     }
@@ -497,6 +501,12 @@ function ColaboradoresList() {
               ))}
             </div>
           </div>
+          <div>
+            <div className="t-micro" style={{ marginBottom: 6 }}>VALOR DA DIÁRIA</div>
+            <input className="ipt" value={editDiaria} placeholder="R$ 0,00" inputMode="numeric"
+              onChange={ev => setEditDiaria(fmtV(ev.target.value))} />
+            <div className="t-caption" style={{ marginTop: 4, fontSize: 11 }}>Usado em Contas a pagar para a equipe própria (ADM). Deixe em branco se não se aplica.</div>
+          </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={cancelEdit}>Cancelar</button>
             <button className="btn btn-primary" style={{ flex: 1 }}
@@ -567,8 +577,13 @@ function ColaboradoresList() {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <div className="t-micro" style={{ marginBottom: 6 }}>VALOR DA DIÁRIA</div>
+                  <input className="ipt" value={diaria} placeholder="R$ 0,00" inputMode="numeric"
+                    onChange={ev => setDiaria(fmtV(ev.target.value))} />
+                </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setAddingGroupKey(null); setNome(''); }}>Cancelar</button>
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setAddingGroupKey(null); setNome(''); setDiaria(''); }}>Cancelar</button>
                   <button className="btn btn-primary" style={{ flex: 1 }} disabled={!nome.trim() || saving} onClick={() => saveNewForGroup(key)}>
                     {saving ? 'Salvando…' : 'Adicionar'}
                   </button>
@@ -653,9 +668,16 @@ function ColaboradoresList() {
             </div>
           </div>
 
+          <div>
+            <div className="t-micro" style={{ marginBottom: 8 }}>VALOR DA DIÁRIA</div>
+            <input className="ipt" value={diaria} placeholder="R$ 0,00" inputMode="numeric"
+              onChange={e => setDiaria(fmtV(e.target.value))} />
+            <div className="t-caption" style={{ marginTop: 4, fontSize: 11 }}>Usado em Contas a pagar para a equipe própria (ADM). Deixe em branco se não se aplica.</div>
+          </div>
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary" style={{ flex: 1 }}
-              onClick={() => { setAdding(false); setNome(''); }}>Cancelar</button>
+              onClick={() => { setAdding(false); setNome(''); setDiaria(''); }}>Cancelar</button>
             <button className="btn btn-primary" style={{ flex: 1 }}
               disabled={!nome.trim() || saving} onClick={saveNew}>
               {saving ? 'Salvando…' : 'Salvar'}

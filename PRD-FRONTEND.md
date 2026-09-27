@@ -343,7 +343,7 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 ## Tela: Contas a pagar
 
 **Quem acessa:** engenharia e mestre (o mestre chega por **Mais**). **Visitante não vê** (some do menu e o banco recusa). `[VISTO]`
-**Aba Mão de obra:** navegador de **quinzena** (1ª: dias 1–15; 2ª: 16–fim do mês). Para cada pessoa da equipe própria (ADM): **dias presente** (toque para ver as datas), **diária** (editável, salva ao sair do campo) e o subtotal. Conta como presente quem aparece no efetivo de um RDO — enviado ou em rascunho — como ADM (própria), uma vez por dia. **Pagar** abre o resumo (dias × diária, **adicional**, **desconto**, data do pagamento, total) e confirma; a linha vira "✓ pago em dd/mm" e **Desfazer** devolve para "a pagar". Topo: **a pagar**, **já pago**, **pessoas**; aviso de quantas pessoas estão sem diária.
+**Aba Mão de obra:** navegador de **quinzena** — ciclo fixo de 14 dias, ancorado em 12/09/2026 (não é mais 1–15/16–fim do mês; pode atravessar dois meses, ex.: 26/09 a 09/10). Para cada pessoa da equipe própria (ADM): **dias presente** (toque para ver as datas), **diária** (editável, salva ao sair do campo) e o subtotal. Conta como presente quem aparece no efetivo de um RDO — enviado ou em rascunho — como ADM (própria), uma vez por dia. **Pagar** abre o resumo (dias × diária, **adicional**, **desconto**, data do pagamento, total) e confirma; a linha vira "✓ pago em dd/mm" e **Desfazer** devolve para "a pagar". Topo: **a pagar**, **já pago**, **pessoas**; aviso de quantas pessoas estão sem diária.
 **Aba Despesas:** navegador de **mês** (pelo vencimento). Cartões com descrição, categoria, vencimento, valor e situação (**em aberto**, **vencida**, **paga**). **Nova despesa** (descrição, categoria, valor, vencimento, "já foi paga"); **Marcar como paga** / **Reabrir**; apagar. Topo: em aberto, pago, total do mês.
 **Campos e informações:** ver `contas_pagar` e `colaboradores.valor_diaria`.
 **Estado vazio:** "Ninguém da equipe própria apareceu nos RDOs desta quinzena." / "Nenhuma despesa com vencimento em mês/ano."
@@ -390,7 +390,7 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 
 **Quem acessa:** engenharia e mestre. **Chega aqui por:** menu do avatar / "Outras telas". `[VISTO]`
 **O que aparece:** "Cadastros base — Fornecedores, colaboradores e ambientes". Abas **Fornecedores · Colaboradores · Ambientes**. Fornecedor: iniciais coloridas, nome, "N colaboradores ativos", lápis e X. Botão **+ Novo fornecedor**.
-**Campos:** fornecedor (nome, cor); colaborador (nome, função, fornecedor, ativo); ambiente (nome, pavimento, ordem).
+**Campos:** fornecedor (nome, cor); colaborador (nome, função, fornecedor, **valor da diária**, ativo); ambiente (nome, pavimento, ordem).
 **Ações:** criar, editar, apagar. Apagar fornecedor pede confirmação: "Remover "[nome]"? Os colaboradores vinculados perderão o vínculo." **Renomear** fornecedor ou ambiente **não** atualiza o histórico já gravado (ver PRD-BACKEND, "Ligações por nome").
 
 ## Tela: Relatórios
@@ -403,7 +403,7 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 
 ## Tela: Painel de admin (Usuários)
 
-**Quem acessa:** só administrador. **Chega aqui por:** menu do avatar. `[VISTO]`
+**Quem acessa:** só administrador (engenharia ou mestre com `is_admin`). **Chega aqui por:** menu do avatar (engenharia) ou Configurações → "Usuários e permissões" (os dois perfis, é o mesmo card de "Gerenciar obras"). `[VISTO]`
 **O que aparece:** "ADMINISTRAÇÃO — Usuários". Uma linha por pessoa: inicial, login, selo **ADMIN** (se for), tipo (Engenharia, Mestre, Visitante), e-mail e "último acesso". Lápis e lixeira (a lixeira some para si mesmo). Botão **+ Novo**.
 **Campos:** e-mail, senha (mínimo 8 caracteres), nome, tipo de acesso, é administrador.
 **Ações:** criar usuário; editar (tipo, nome, e-mail, senha); apagar (não a si mesmo). Visitante não pode ser admin.
@@ -435,7 +435,7 @@ O app já traz um **modo demonstração** (`VITE_DEMO=1` no `.env.local`): roda 
 
 - [ ] Cada perfil abre na sua tela inicial: engenharia e visitante em Início da engenharia; mestre em Início do mestre.
 - [ ] Criar uma pendência a faz aparecer na lista sem recarregar; resolver uma pendência diminui o número da barra inferior na hora.
-- [ ] O mestre **não vê** Contratações, Projetos, Cronograma, Gestão visual, Visitas, Relatórios nem o Painel de admin.
+- [ ] O mestre **não vê** Contratações, Projetos, Cronograma, Gestão visual, Visitas nem Relatórios. O Painel de admin e "Gerenciar obras" aparecem em Configurações **só se o mestre também for `is_admin`** — o mesmo card que já existia para "Gerenciar obras".
 - [ ] Visitante vê tudo e, ao tentar gravar, recebe o aviso e nada é gravado.
 - [ ] O diário do mestre no celular aparece na tela da engenharia sem recarregar (tempo real).
 - [ ] Toda busca acha "Hidráulica" digitando "hidraulica" (sem acento e em qualquer caixa).

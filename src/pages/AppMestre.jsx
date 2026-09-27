@@ -14,6 +14,7 @@ import { MestreRDOWizard } from '../screens/mestre-rdo-wizard';
 import { ChecklistList, ChecklistDetail, ChecklistNew } from '../screens/checklist';
 import { ABERTAS } from '../lib/pendencias-filtro';
 import { EngCadastros } from '../screens/cadastros';
+import { AdminUsuarios } from '../screens/admin-usuarios';
 import { RDOHistoricoScreen } from '../screens/rdo-historico';
 import { GaleriaFotos } from '../screens/galeria-fotos';
 import { ObrasScreen } from '../screens/obras';
@@ -382,7 +383,7 @@ export default function AppMestre({ profile }) {
     'rdo-activity': 'rdo', 'rdo-summary': 'rdo', 'rdo-occurrence': 'rdo', 'rdo-assign': 'rdo', 'rdo-historico': 'rdo', 'rdo-wizard': 'rdo', 'rdo-classic': 'rdo',
     'checklist-detail': 'checklist', 'checklist-new': 'checklist',
     'efetivo': 'home', 'cadastros': 'home', 'efetivo-resumo': 'home', 'galeria': 'home',
-    'configuracoes': 'mais', 'obras': 'mais', 'medicoes': 'mais', 'pagar': 'mais', 'receber': 'mais',
+    'configuracoes': 'mais', 'obras': 'mais', 'admin-usuarios': 'mais', 'medicoes': 'mais', 'pagar': 'mais', 'receber': 'mais',
   };
   const activeNav = navMap[route.screen] || route.screen;
 
@@ -439,6 +440,7 @@ export default function AppMestre({ profile }) {
     case 'rdo-historico':    body = <RDOHistoricoScreen goto={goto} onEditRDO={abrirRDOData} today={today} />; break;
     case 'galeria':          body = <GaleriaFotos goto={goto} voltarPara="home" />; break;
     case 'obras':            body = <ObrasScreen goto={goto} voltarPara="configuracoes" />; break;
+    case 'admin-usuarios':   body = <AdminUsuarios goto={goto} voltarPara="configuracoes" />; break;
     case 'configuracoes':    body = <ConfiguracoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     case 'medicoes':         body = <MedicoesScreen goto={goto} profile={profile} voltarPara="mais" />; break;
     case 'pagar':            body = <ContasPagarScreen goto={goto} voltarPara="mais" />; break;

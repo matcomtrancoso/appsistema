@@ -86,6 +86,21 @@ export function ConfiguracoesScreen({ goto, profile, voltarPara = 'home' }) {
           </div>
         )}
 
+        {/* Usuários e permissões — só admin (a mesma trava de Gerenciar obras);
+            antes só existia no menu do avatar, que o mestre não tem. */}
+        {profile?.is_admin && (
+          <div className="card tap" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12 }}
+            onClick={() => goto('admin-usuarios')}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--primary-tint)', color: 'var(--primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>👤</div>
+            <div style={{ flex: 1 }}>
+              <div className="t-strong" style={{ fontSize: 14 }}>Usuários e permissões</div>
+              <div className="t-caption">Criar acesso, trocar papel (engenharia, mestre, visitante) e senha</div>
+            </div>
+            <span style={{ width: 16, height: 16, color: 'var(--text-3)' }}>{Icon.chevR}</span>
+          </div>
+        )}
+
         {/* Logomarca — chega na fatia 4 */}
         <div className="card" style={{ padding: 16, opacity: 0.6 }}>
           <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-3)', letterSpacing: '0.08em', marginBottom: 6 }}>

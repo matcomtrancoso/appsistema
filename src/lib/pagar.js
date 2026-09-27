@@ -1,39 +1,40 @@
 // Contas a pagar: a conta da mão de obra própria por quinzena.
 // Regra pura (sem tela, sem banco): quem esteve presente, quantos dias, quanto vale.
 
-import { MESES_CURTOS } from './date.js';
+import { MESES_CURTOS, parseISODate, addDaysISO } from './date.js';
 
 const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
-const pad = (n) => String(n).padStart(2, '0');
 const nomeChave = (nome) => String(nome || '').trim().toLowerCase();
 
 // ── Quinzena ────────────────────────────────────────────────────────────────
-// 1ª: dia 1 ao 15. 2ª: dia 16 ao último do mês.
+// Ciclo fixo de 14 dias, ancorado em 12/09/2026 (pedido do dono do produto —
+// deixou de ser 1–15/16–fim do mês, então uma quinzena pode atravessar dois
+// meses, tipo 26/09 a 09/10). `periodo` é só um contador de ciclos desde a
+// âncora (pode ser negativo, para ciclos antes dela); nada além deste arquivo
+// olha esse número.
+const DIA_MS = 86400000;
+const ANCORA_QUINZENA = '2026-09-12';
+
 export function quinzenaDe(iso) {
-  const [a, m, d] = String(iso).slice(0, 10).split('-').map(Number);
-  const ultimo = new Date(a, m, 0).getDate();
-  const numero = d <= 15 ? 1 : 2;
-  return {
-    numero,
-    inicio: `${a}-${pad(m)}-${numero === 1 ? '01' : '16'}`,
-    fim: `${a}-${pad(m)}-${numero === 1 ? '15' : pad(ultimo)}`,
-  };
+  const dias = Math.round((parseISODate(iso) - parseISODate(ANCORA_QUINZENA)) / DIA_MS);
+  const periodo = Math.floor(dias / 14);
+  const inicio = addDaysISO(ANCORA_QUINZENA, periodo * 14);
+  return { periodo, inicio, fim: addDaysISO(inicio, 13) };
 }
 
-/** A quinzena `delta` passos adiante (negativo = para trás). */
+/** A quinzena `delta` ciclos adiante (negativo = para trás). */
 export function quinzenaVizinha(q, delta) {
-  const [a, m] = q.inicio.split('-').map(Number);
-  let idx = a * 24 + (m - 1) * 2 + (q.numero - 1) + delta;
-  const ano = Math.floor(idx / 24);
-  idx -= ano * 24;
-  const mes = Math.floor(idx / 2) + 1;
-  const numero = (idx % 2) + 1;
-  return quinzenaDe(`${ano}-${pad(mes)}-${numero === 1 ? '01' : '16'}`);
+  return quinzenaDe(addDaysISO(q.inicio, delta * 14));
 }
 
 export function rotuloQuinzena(q) {
-  const [a, m] = q.inicio.split('-').map(Number);
-  return `${q.numero}ª quinzena · ${MESES_CURTOS[m - 1]}/${a}`;
+  // Fatia a string em vez de `Number()` para não perder o zero à esquerda do dia (09, não 9).
+  const [ai, mi, di] = [q.inicio.slice(0, 4), Number(q.inicio.slice(5, 7)), q.inicio.slice(8, 10)];
+  const [af, mf, df] = [q.fim.slice(0, 4), Number(q.fim.slice(5, 7)), q.fim.slice(8, 10)];
+  const fimTxt = `${df} de ${MESES_CURTOS[mf - 1]}/${af}`;
+  if (ai === af && mi === mf) return `${di} a ${fimTxt}`;   // mesmo mês: "12 a 25 de set/2026"
+  const inicioTxt = ai === af ? `${di} de ${MESES_CURTOS[mi - 1]}` : `${di} de ${MESES_CURTOS[mi - 1]}/${ai}`;
+  return `${inicioTxt} a ${fimTxt}`;   // atravessa mês (ou ano): "26 de set a 09 de out/2026"
 }
 
 // ── Presença da equipe própria (ADM) ────────────────────────────────────────

@@ -646,7 +646,7 @@ export default function AppEngenheiro({ profile }) {
     case 'cronograma':       body = <CronogramaScreen isDesktop={isDesktop} />; break;
     case 'galeria':          body = <GaleriaFotos goto={goto} voltarPara="home" />; break;
     case 'gestao-visual':    body = <TelaLazy><GestaoVisual /></TelaLazy>; break;
-    case 'admin-usuarios':   body = <AdminUsuarios goto={goto} />; break;
+    case 'admin-usuarios':   body = <AdminUsuarios goto={goto} voltarPara="configuracoes" />; break;
     case 'obras':            body = <ObrasScreen goto={goto} voltarPara="configuracoes" />; break;
     case 'configuracoes':    body = <ConfiguracoesScreen goto={goto} profile={profile} />; break;
     default:                 body = <EngHome goto={goto} dailyState={dailyState} />;

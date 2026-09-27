@@ -5,17 +5,17 @@ let ok = 0, tot = 0;
 function t(nome, cond) { tot++; if (cond) ok++; else console.error('FALHOU:', nome); }
 const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// ── quinzena ──
-t('dia 15 é 1ª quinzena', igual(quinzenaDe('2026-09-15'), { numero: 1, inicio: '2026-09-01', fim: '2026-09-15' }));
-t('dia 16 é 2ª quinzena', igual(quinzenaDe('2026-09-16'), { numero: 2, inicio: '2026-09-16', fim: '2026-09-30' }));
-t('2ª quinzena de fevereiro fecha no 28', quinzenaDe('2026-02-20').fim === '2026-02-28');
-t('fevereiro bissexto fecha no 29', quinzenaDe('2028-02-20').fim === '2028-02-29');
-t('31 de julho ainda é 2ª quinzena de julho', igual(quinzenaDe('2026-07-31'), { numero: 2, inicio: '2026-07-16', fim: '2026-07-31' }));
-t('anterior à 1ª é a 2ª do mês passado', igual(quinzenaVizinha(quinzenaDe('2026-09-05'), -1), quinzenaDe('2026-08-20')));
-t('próxima da 2ª é a 1ª do mês seguinte', igual(quinzenaVizinha(quinzenaDe('2026-09-20'), 1), quinzenaDe('2026-10-01')));
-t('vira o ano para trás', igual(quinzenaVizinha(quinzenaDe('2026-01-03'), -1), quinzenaDe('2025-12-20')));
-t('vira o ano para frente', igual(quinzenaVizinha(quinzenaDe('2026-12-20'), 1), quinzenaDe('2027-01-02')));
-t('rótulo', rotuloQuinzena(quinzenaDe('2026-09-16')) === '2ª quinzena · set/2026');
+// ── quinzena: ciclo fixo de 14 dias, ancorado em 12/09/2026 ──
+t('a âncora abre uma quinzena', igual(quinzenaDe('2026-09-12'), { periodo: 0, inicio: '2026-09-12', fim: '2026-09-25' }));
+t('meio da quinzena cai no mesmo período', igual(quinzenaDe('2026-09-20'), { periodo: 0, inicio: '2026-09-12', fim: '2026-09-25' }));
+t('o dia seguinte ao fim já é a próxima', igual(quinzenaDe('2026-09-26'), { periodo: 1, inicio: '2026-09-26', fim: '2026-10-09' }));
+t('quinzena atravessando o mês', quinzenaDe('2026-10-01').inicio === '2026-09-26' && quinzenaDe('2026-10-01').fim === '2026-10-09');
+t('a de antes da âncora termina na véspera', quinzenaDe('2026-09-11').fim === '2026-09-11' && quinzenaDe('2026-09-11').inicio === '2026-08-29');
+t('vizinha adiante soma 14 dias', igual(quinzenaVizinha(quinzenaDe('2026-09-12'), 1), quinzenaDe('2026-09-26')));
+t('vizinha atrás soma 14 dias', igual(quinzenaVizinha(quinzenaDe('2026-09-26'), -1), quinzenaDe('2026-09-12')));
+t('vizinha atravessa o ano', quinzenaVizinha(quinzenaDe('2026-12-20'), 3).inicio > '2026-12-20');
+t('rótulo dentro do mesmo mês', rotuloQuinzena(quinzenaDe('2026-09-12')) === '12 a 25 de set/2026');
+t('rótulo atravessando o mês', rotuloQuinzena(quinzenaDe('2026-09-26')) === '26 de set a 09 de out/2026');
 
 // ── presença ──
 const rdos = [

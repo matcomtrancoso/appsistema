@@ -394,7 +394,7 @@ export function MestreRDOv2({ goto, rdoId, dailyState, atividades = [], efetivo,
       {efetivo.length > 0 && (() => {
         const empresaGroups = Object.entries(groupBy(efetivo, 'empresa_id'));
         const workerCardProps = (w) => ({
-          onAssign: () => goto('rdo-assign', { workerId: w.id }),
+          onAssign: () => goto('rdo-assign', { workerId: w.id, voltarPara: 'rdo-classic' }),
           onToggleAdm: () => setEfetivo(prev => prev.map(x => x.id === w.id ? { ...x, is_adm: !x.is_adm } : x)),
           onRemove: () => setEfetivo(prev => prev.filter(x => x.id !== w.id)),
           onUnassign: () => setEfetivo(prev => prev.map(x => x.id === w.id ? { ...x, atividade_id: null, atividade_livre: null, atividade_status: null } : x)),
@@ -402,7 +402,7 @@ export function MestreRDOv2({ goto, rdoId, dailyState, atividades = [], efetivo,
           onEditLivre: (newText) => setEfetivo(prev => prev.map(x => x.id === w.id ? { ...x, atividade_livre: newText || null } : x)),
           onEditExtraLivre: (extraId, newText) => setEfetivo(prev => prev.map(x => x.id === w.id ? { ...x, extras: (x.extras || []).map(ex => ex.id === extraId ? { ...ex, atividade_livre: newText || null } : ex) } : x)),
           onSetStatus: (newStatus) => onSetStatus ? onSetStatus(w, newStatus) : setEfetivo(prev => prev.map(x => x.id === w.id ? { ...x, atividade_status: newStatus } : x)),
-          onAssignExtra: () => goto('rdo-assign', { workerId: w.id, extraMode: true }),
+          onAssignExtra: () => goto('rdo-assign', { workerId: w.id, extraMode: true, voltarPara: 'rdo-classic' }),
           onSetExtraStatus: (extraId, newStatus) => onSetExtraStatus ? onSetExtraStatus(w, extraId, newStatus) : setEfetivo(prev => prev.map(x => x.id === w.id ? { ...x, extras: (x.extras || []).map(ex => ex.id === extraId ? { ...ex, status: newStatus } : ex) } : x)),
         });
 
@@ -994,6 +994,11 @@ function PlannedRow({ a, on, onClick, muted }) {
 export function MestreRDOAssign({ goto, params, efetivo, setEfetivo, atividades = [] }) {
   const { empresas } = useObra();
   const extraMode = params.extraMode || false;
+  // De onde a pessoa veio (Clássico ou o assistente por equipe) — sem isto,
+  // Salvar/Voltar sempre mandava para o assistente "Por equipe", mesmo quem
+  // estava no Clássico. `goto('rdo')` era o padrão de antes de existir este
+  // parâmetro; mantido só como fallback.
+  const voltarPara = params.voltarPara || 'rdo';
   const w = efetivo.find(x => x.id === params.workerId);
   const [livre, setLivre] = useState('');
   const [picked, setPicked] = useState(extraMode ? null : (w?.atividade_id || null));
@@ -1003,7 +1008,7 @@ export function MestreRDOAssign({ goto, params, efetivo, setEfetivo, atividades 
       <div className="page page-pad">
         <div className="card" style={{ textAlign: 'center', padding: 20 }}>
           <div className="t-strong">Colaborador não encontrado</div>
-          <button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => goto('rdo')}>Voltar</button>
+          <button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={() => goto(voltarPara)}>Voltar</button>
         </div>
       </div>
     );
@@ -1039,13 +1044,13 @@ export function MestreRDOAssign({ goto, params, efetivo, setEfetivo, atividades 
         atividade_status: null,
       } : x));
     }
-    goto('rdo');
+    goto(voltarPara);
   };
 
   return (
     <div className="page">
       <div style={{ padding: '12px var(--pad-4) 0' }}>
-        <button className="btn btn-ghost btn-sm" style={{ paddingLeft: 0 }} onClick={() => goto('rdo')}>
+        <button className="btn btn-ghost btn-sm" style={{ paddingLeft: 0 }} onClick={() => goto(voltarPara)}>
           <span style={{ width: 18, height: 18 }}>{Icon.back}</span> Voltar
         </button>
       </div>

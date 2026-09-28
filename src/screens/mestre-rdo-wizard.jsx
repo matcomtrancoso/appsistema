@@ -234,36 +234,47 @@ function PassoPessoas({ empresas, colaboradores, efetivo, setEfetivo, avancar, o
   const [empresaId, setEmpresaId] = useState(null);   // null = escolhendo fornecedor
   const [q, setQ] = useState('');
 
-  // Só empreiteiras de verdade — "ADM própria" não é empresa (ADM é marca da pessoa).
-  const fornecedores = useMemo(() => empresas
-    .filter(e => e.tipo === 'empreiteiro')
-    .map(e => ({ ...e, n: colaboradores.filter(c => c.empreiteiro_id === e.id && c.ativo !== false).length }))
-    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR')),
-    [empresas, colaboradores]);
+  // As empreiteiras de verdade, em ordem alfabética, com a equipe própria (ADM)
+  // por último — mesma ordem de MestreRDOAddSheet. ADM entrava só como uma
+  // "marca" que se liga depois a um contratado (toggleAdm); quem está
+  // CADASTRADO direto como ADM (própria), sem empreiteiro, não tinha por onde
+  // entrar aqui — ficava fora do efetivo do dia.
+  const fornecedores = useMemo(() => {
+    const contarPessoas = (e) => colaboradores.filter(c =>
+      (e.id === 'adm' ? !c.empreiteiro_id : c.empreiteiro_id === e.id) && c.ativo !== false).length;
+    const empreiteiras = empresas.filter(e => e.tipo === 'empreiteiro')
+      .map(e => ({ ...e, n: contarPessoas(e) }))
+      .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+    const adm = empresas.find(e => e.tipo === 'adm');
+    return adm ? [...empreiteiras, { ...adm, n: contarPessoas(adm) }] : empreiteiras;
+  }, [empresas, colaboradores]);
 
   const empresaSel = empresas.find(e => e.id === empresaId);
+  const ehAdm = empresaId === 'adm';
 
   const pessoas = useMemo(() => {
     if (!empresaId) return [];
     return colaboradores
-      .filter(c => c.empreiteiro_id === empresaId && c.ativo !== false)
+      .filter(c => (ehAdm ? !c.empreiteiro_id : c.empreiteiro_id === empresaId) && c.ativo !== false)
       .filter(c => contem(c.nome, q))
       .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
-  }, [colaboradores, empresaId, q]);
+  }, [colaboradores, empresaId, ehAdm, q]);
 
   const selecionadoIds = new Set(efetivo.map(w => w.colab_id).filter(Boolean));
+  // Quem entrou pelo grupo ADM (própria) já É a equipe própria — não dá pra
+  // "desmarcar" isso (diferente do contratado que ganha a marca por cima).
   const admDe = (id) => !!efetivo.find(w => w.colab_id === id)?.is_adm;
 
   function togglePessoa(c) {
     if (selecionadoIds.has(c.id)) {
       setEfetivo(prev => prev.filter(w => w.colab_id !== c.id));
     } else {
-      const e = empresas.find(x => x.id === c.empreiteiro_id) || {};
+      const e = ehAdm ? empresaSel : (empresas.find(x => x.id === c.empreiteiro_id) || {});
       setEfetivo(prev => [...prev, {
         id: 'w' + Date.now() + '_' + c.id,
         colab_id: c.id, nome: c.nome, iniciais: c.iniciais, funcao: c.funcao,
         empresa_id: c.empreiteiro_id, empresa_nome: e.nome || '',
-        is_adm: false, atividade_id: null, atividade_livre: null, extras: [],
+        is_adm: ehAdm, atividade_id: null, atividade_livre: null, extras: [],
       }]);
     }
   }
@@ -292,7 +303,7 @@ function PassoPessoas({ empresas, colaboradores, efetivo, setEfetivo, avancar, o
             </button>
           ))}
           {lista.length === 0 && (
-            <div className="t-caption" style={{ textAlign: 'center', padding: 24 }}>Nenhuma empreiteira encontrada.</div>
+            <div className="t-caption" style={{ textAlign: 'center', padding: 24 }}>Nenhuma empreiteira nem equipe própria encontrada.</div>
           )}
         </div>
         {totalDia > 0 && (
@@ -305,7 +316,8 @@ function PassoPessoas({ empresas, colaboradores, efetivo, setEfetivo, avancar, o
   }
 
   // ── Sub-tela B: pessoas do fornecedor ────────────────────────────────────
-  const selDaEmpresa = colaboradores.filter(c => c.empreiteiro_id === empresaId && selecionadoIds.has(c.id)).length;
+  const selDaEmpresa = colaboradores.filter(c =>
+    (ehAdm ? !c.empreiteiro_id : c.empreiteiro_id === empresaId) && selecionadoIds.has(c.id)).length;
   return (
     <div>
       <button onClick={() => { setEmpresaId(null); setQ(''); }}
@@ -330,7 +342,8 @@ function PassoPessoas({ empresas, colaboradores, efetivo, setEfetivo, avancar, o
                   <div className="t-caption" style={{ fontSize: 11 }}>{c.funcao || 'Colaborador'}</div>
                 </div>
               </button>
-              {on && (
+              {/* Quem já entrou pelo grupo ADM (própria) é ADM por definição — nada pra marcar. */}
+              {on && !ehAdm && (
                 <button onClick={() => toggleAdm(c)} title="Serviço pontual, direto pela administração própria (não empreitada)"
                   style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 800, letterSpacing: '.3px', padding: '5px 10px', borderRadius: 999, cursor: 'pointer',
                     border: adm ? '1px solid #9cc0ea' : '1px solid var(--border)',
@@ -343,7 +356,7 @@ function PassoPessoas({ empresas, colaboradores, efetivo, setEfetivo, avancar, o
         })}
         {pessoas.length === 0 && (
           <div className="t-caption" style={{ textAlign: 'center', padding: 24 }}>
-            {q.trim() ? 'Ninguém com esse nome.' : 'Nenhuma pessoa nesta empresa.'}
+            {q.trim() ? 'Ninguém com esse nome.' : (ehAdm ? 'Nenhum colaborador cadastrado como ADM (própria).' : 'Nenhuma pessoa nesta empresa.')}
           </div>
         )}
       </div>

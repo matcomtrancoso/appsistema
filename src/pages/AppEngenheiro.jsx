@@ -614,7 +614,7 @@ export default function AppEngenheiro({ profile }) {
         onPickDate={escolherDiaRdo} onVoltarHoje={() => loadRDO_eng(today)}
       />; break;
     case 'rdo-eng-assign':
-      body = <MestreRDOAssign goto={(s,p) => goto(s === 'rdo' ? 'rdo-eng' : s === 'rdo-activity' ? 'rdo-eng-activity' : s, p)}
+      body = <MestreRDOAssign goto={(s,p) => goto(s === 'rdo' ? 'rdo-eng' : s === 'rdo-classic' ? 'rdo-eng-classic' : s === 'rdo-activity' ? 'rdo-eng-activity' : s, p)}
         params={route.params} efetivo={rdoEfetivo} setEfetivo={setRdoEfetivo} atividades={rdoAtividades} />; break;
     case 'rdo-eng-activity':
       body = <RDOActivity params={route.params}

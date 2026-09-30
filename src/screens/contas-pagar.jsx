@@ -9,7 +9,16 @@ import { fmtV, parseV, fmtCur } from '../lib/moeda.js';
 import { quinzenaDe, quinzenaVizinha, rotuloQuinzena, presencasAdm, valorPagamento, linhasDaQuinzena, resumoQuinzena, situacaoDespesa, totaisDespesas } from '../lib/pagar.js';
 import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
 import { todasAsLinhas } from '../lib/paginar.js';
+import { definirObra, obraAtual, logoAtual } from '../lib/pdf-cabecalho.js';
+import { relatorioMaoDeObra, relatorioDespesas, abrirRelatorio } from '../lib/pagar-relatorio.js';
 import { Popup, Rodape, campo, rotulo } from '../components/popup-financeiro';
+
+// Cabeçalho do PDF (obra, cliente, endereço, logo) é o mesmo de todo relatório
+// do app — carrega uma vez e some no cache do módulo (ver src/lib/pdf-cabecalho.js).
+async function carregarCabecalhoPDF() {
+  const { data } = await supabase.from('relatorio_semanal_config').select('*').eq('id', 1).maybeSingle();
+  definirObra(data);
+}
 
 const fmtDia = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
 
@@ -132,12 +141,21 @@ function MaoDeObra() {
 
   const ehAtual = quinzena.inicio === quinzenaDe(hoje).inicio;
 
+  async function exportar() {
+    await carregarCabecalhoPDF();
+    abrirRelatorio(relatorioMaoDeObra({ linhas, quinzena, obra: obraAtual(), logoUrl: logoAtual() }));
+  }
+
   return (
     <>
       <Navegador texto={rotuloQuinzena(quinzena)} ehAtual={ehAtual}
         onAnterior={() => setQuinzena(q => quinzenaVizinha(q, -1))}
         onProxima={() => setQuinzena(q => quinzenaVizinha(q, 1))}
         onHoje={() => setQuinzena(quinzenaDe(hoje))} />
+
+      <button className="btn btn-secondary btn-sm" style={{ marginBottom: 14 }} disabled={presencas === null} onClick={exportar}>
+        <span style={{ width: 14, height: 14 }}>{Icon.download}</span>Exportar relatório
+      </button>
 
       <div className="t-caption" style={{ fontSize: 11.5, marginBottom: 12, lineHeight: 1.5 }}>
         {fmtDataBR(quinzena.inicio)} a {fmtDataBR(quinzena.fim)}. Conta como presente quem aparece no efetivo de um RDO
@@ -360,13 +378,23 @@ function Despesas() {
 
   const { emAberto, pagas, total } = totaisDespesas(itens || []);
 
+  async function exportar() {
+    await carregarCabecalhoPDF();
+    abrirRelatorio(relatorioDespesas({ itens: itens || [], mesRotulo: rotuloMesAno(mes), hoje, obra: obraAtual(), logoUrl: logoAtual() }));
+  }
+
   return (
     <>
       <Navegador texto={rotuloMesAno(mes)} ehAtual={mes === mesAtual}
         onAnterior={() => setMes(m => somaMesesYM(m, -1))} onProxima={() => setMes(m => somaMesesYM(m, 1))} onHoje={() => setMes(mesAtual)} />
-      <button className="btn btn-primary btn-sm" style={{ marginBottom: 14 }} onClick={() => setNova(true)}>
-        <span style={{ width: 14, height: 14 }}>{Icon.plus}</span>Nova despesa
-      </button>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+        <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => setNova(true)}>
+          <span style={{ width: 14, height: 14 }}>{Icon.plus}</span>Nova despesa
+        </button>
+        <button className="btn btn-secondary btn-sm" disabled={itens === null} onClick={exportar}>
+          <span style={{ width: 14, height: 14 }}>{Icon.download}</span>Exportar
+        </button>
+      </div>
 
       {erro && <div className="card" style={cartaoAviso}>⚠️ {erro}</div>}
       {itens === null && <div style={{ padding: 28, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>Carregando…</div>}

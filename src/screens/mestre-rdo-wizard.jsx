@@ -18,21 +18,32 @@ function BotaoCamera({ meta, compacto }) {
   const [n, setN] = useState(0);
   const inputRef = useRef(null);
   const onChange = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
+    if (!files.length) return;
     setEnviando(true);
-    try { await enviarFotoRDO(file, meta()); setN(v => v + 1); }
-    catch (err) { avisarErro(err, 'enviar a foto'); }
+    // Uma de cada vez (não Promise.all): a mesma foto do celular sobe pesada,
+    // e todas em paralelo derrubavam a conexão no canteiro. Uma falhar não
+    // cancela as outras — o mestre não pode perder as que já subiram.
+    let falhas = 0;
+    for (const file of files) {
+      try { await enviarFotoRDO(file, meta()); setN(v => v + 1); }
+      catch (err) { falhas++; console.error('Erro ao enviar foto:', err); }
+    }
+    if (falhas > 0) {
+      const e = new Error(`${falhas} de ${files.length} não enviaram. Tente de novo com elas.`);
+      e.paraUsuario = true;
+      avisarErro(e, 'enviar todas as fotos');
+    }
     setEnviando(false);
   };
   return (
     <>
-      <button onClick={() => inputRef.current?.click()} disabled={enviando} title="Tirar/anexar foto"
+      <button onClick={() => inputRef.current?.click()} disabled={enviando} title="Tirar/anexar foto (pode escolher várias)"
         style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--border)', background: n > 0 ? 'var(--primary-tint)' : 'var(--surface)', color: n > 0 ? 'var(--primary)' : 'var(--text-3)', borderRadius: 9, padding: compacto ? '3px 8px' : '5px 9px', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
         {enviando ? '…' : '📷'}{n > 0 && <span style={{ fontSize: 11 }}>{n}</span>}
       </button>
-      <input ref={inputRef} type="file" accept="image/*" onChange={onChange} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept="image/*" multiple onChange={onChange} style={{ display: 'none' }} />
     </>
   );
 }
@@ -733,16 +744,27 @@ function PassoRevisao({ rdoId, profile, atividades = [], efetivo = [], submitDai
   }, [rdoId]);
 
   const anexar = async (e) => {
-    const file = e.target.files?.[0];
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (!file) return;
+    if (!files.length) return;
     setEnviando(true); setErro('');
     try {
       const rid = await garantirRdoId(rdoId, dataRDO);
-      const row = await enviarFotoRDO(file, { rdoId: rid, data: dataRDO || hojeLocal(), autorNome: profile?.nome });
-      setFotos(f => [...f, row]);
+      // Uma de cada vez: várias fotos do celular em paralelo derrubavam a
+      // conexão no canteiro. Uma falhar não cancela as outras já enviadas.
+      let falhas = 0;
+      for (const file of files) {
+        try {
+          const row = await enviarFotoRDO(file, { rdoId: rid, data: dataRDO || hojeLocal(), autorNome: profile?.nome });
+          setFotos(f => [...f, row]);
+        } catch (err) {
+          falhas++;
+          console.error('Erro ao enviar foto:', err);
+        }
+      }
+      if (falhas > 0) setErro(`${falhas} de ${files.length} não enviaram. Tente de novo com elas.`);
     } catch (err) {
-      setErro(msgAmigavel(err, 'enviar a foto'));
+      setErro(msgAmigavel(err, 'abrir o RDO do dia'));
     }
     setEnviando(false);
   };
@@ -782,7 +804,7 @@ function PassoRevisao({ rdoId, profile, atividades = [], efetivo = [], submitDai
         <span style={{ fontSize: 26 }}>{enviando ? '⏳' : '📷'}</span>
         {enviando ? 'Enviando…' : fotos.length ? 'Adicionar outra foto' : 'Tirar ou escolher foto'}
       </button>
-      <input ref={inputRef} type="file" accept="image/*" onChange={anexar} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept="image/*" multiple onChange={anexar} style={{ display: 'none' }} />
 
       {erro && <div className="t-caption" style={{ color: 'var(--danger)', marginTop: 8 }}>{erro}</div>}
 

@@ -393,13 +393,21 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 **Campos:** fornecedor (nome, cor); colaborador (nome, função, fornecedor, **valor da diária**, ativo); ambiente (nome, pavimento, ordem).
 **Ações:** criar, editar, apagar. Apagar fornecedor pede confirmação: "Remover "[nome]"? Os colaboradores vinculados perderão o vínculo." **Renomear** fornecedor ou ambiente **não** atualiza o histórico já gravado (ver PRD-BACKEND, "Ligações por nome").
 
+## Tela: Obras (admin)
+
+**Quem acessa:** só administrador (engenharia ou mestre com `is_admin`). **Chega aqui por:** menu do avatar → "Gerenciar obras", ou Configurações → mesmo card. `[VISTO]`
+**O que aparece:** "ADMINISTRAÇÃO — Obras". Uma linha por obra: nome, código, endereço; obras desligadas aparecem esmaecidas. Botão **+ Nova**.
+**Campos (editar obra):** nome, código, endereço, cliente, arquiteto, início da obra, **foto de capa**, obra ativa, e a lista de quem acessa aquela obra.
+**Foto de capa:** caixa de prévia (120px) com a imagem de fundo quando houver, ou um placeholder tracejado "Sem foto de capa"; botão **Trocar**/**+ Adicionar** abre o seletor de arquivo (foto é comprimida no aparelho antes de subir, como em toda foto do app); 🗑 remove. É a foto usada como fundo da página de Capa do Relatório (ver Tela: Relatórios) — sem foto, o relatório usa um degradê da marca.
+**Ações:** criar, editar, apagar a imagem de capa sem apagar a obra, desligar/religar ("Obra ativa" não apaga nada, só esconde do dia a dia), liberar acesso por pessoa.
+
 ## Tela: Relatórios
 
 **Quem acessa:** engenharia e visitante. `[VISTO]`
 **O que aparece:** "Relatório da obra — Aqui você monta o relatório com os módulos que quiser — RDO, efetivo, pendências, equipamentos, visitas, contratações e fotos — escolha o período e imprima ou salve em PDF na próxima tela." Botão **Montar relatório**.
-**Tela seguinte (Montar relatório):** "Relatório semanal · Semana N", seletor **Semana | Mês** com setas de período, abas de módulo (RDO, Efetivo, Pendências, Equipamentos, Visitas, Contratações, Planejamento, Projetos, **Fotos**), pré-visualização da página ("Visão geral da semana": efetivo médio, atividades em andamento, pendências abertas, PPC — percentual de planos concluídos, atividades em destaque) e botão **Exportar**. O módulo **Fotos** mostra em grade só as fotos marcadas "usar no relatório" na Galeria de fotos, dentro do período escolhido — não é a galeria inteira.
-**Ações:** escolher período e módulos, ver a prévia página a página, **Exportar** (imprimir ou salvar em PDF; o PDF sai com um cabeçalho colorido e cada módulo dentro de um cartão com barra lateral, não mais linhas soltas).
-**Dados fixos do cabeçalho:** `relatorio_semanal_config` (código da obra, local, arquiteto, cliente, logo, capa, assinaturas).
+**Tela seguinte (Montar relatório):** "Relatório semanal · Semana N", seletor **Semana | Mês** com setas de período, abas de módulo (**Capa**, RDO, Efetivo, Pendências, Equipamentos, Visitas, Contratações, Planejamento, Projetos, Fotos), pré-visualização da página ("Visão geral da semana": efetivo médio, atividades em andamento, pendências abertas, PPC — percentual de planos concluídos, atividades em destaque) e botão **Exportar**. O módulo **Fotos** mostra em grade só as fotos marcadas "usar no relatório" na Galeria de fotos, dentro do período escolhido — não é a galeria inteira. O módulo **Capa** é a primeira página: nome e dados da obra sobre a foto de capa cadastrada em Obras → editar (sem foto, um fundo em degradê da marca).
+**Ações:** escolher período e módulos, ver a prévia página a página, **Exportar** (imprimir ou salvar em PDF; o PDF sai com uma capa de página inteira, cabeçalho colorido e cada módulo dentro de um cartão com barra lateral, não mais linhas soltas).
+**Dados fixos do cabeçalho:** `relatorio_semanal_config` (código da obra, local, arquiteto, cliente, logo, assinaturas) e, por obra, `obras.capa_padrao_url` (foto de fundo da Capa).
 
 ## Tela: Painel de admin (Usuários)
 

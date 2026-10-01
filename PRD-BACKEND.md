@@ -32,8 +32,20 @@ Guardam o **nome** em texto em vez do `id`. Se o nome for renomeado em Cadastros
 Se a tela e o banco divergirem, nada falha: grava valor "estranho". Onde há lista, ela está só no código:
 `atividades_rdo.motivo_nao_exec` (grava **códigos opacos** `m1` a `m10`, ex.: `m2` = "Falta de material"; a tradução só existe em `src/data/index.js`, então reordenar ou renumerar aquela lista corrompe o histórico), `projetos.status` (banco: padrão `'aguardando'`; a tela grava `nao_iniciado`, `em_andamento`, `recebido` — **o padrão do banco nunca é usado**), `projetos.disciplina`, `projetos.etapa`, `projetos.prazo_tipo`, `projetos_comentarios.tipo`, `contratacoes_comentarios.etapa`, `colaboradores.funcao`, `ocorrencias.categoria`, `ocorrencias.turno`, `rdo_fotos.status`, `planta_marcacoes.tipo`.
 
-### Uma obra só
-Não existe tabela `obras`. O nome da obra e a data de início vêm de `src/marca.js`. Três travas reforçam: `rdos.data` é **único no banco inteiro** (um RDO por dia, sem separar por obra), `cronograma_itens.wbs_id` é único no banco inteiro, e `relatorio_semanal_config` tem uma linha só (`id = 1`). **Um banco = uma obra.** Para uma segunda obra hoje, é um segundo banco. `[PENDENTE: quantas obras vão usar este sistema?]`
+### Tabela `obras` (multi-obra)
+O banco já suporta várias obras. Cada tabela "da obra" (RDO, cronograma, medições, contas…) tem uma coluna `obra_id` apontando para `obras.id`; a lista completa e as regras de acesso estão em `CLAUDE.md` ("Multi-obra em andamento"), não repetidas aqui.
+
+| Campo | Tipo | Obrigatório | Observação |
+|---|---|---|---|
+| id | uuid | sim | chave |
+| nome, codigo | text | sim | |
+| endereco, cliente, arquiteto | text | não | |
+| data_inicio | date | não | |
+| capa_padrao_url | text | não | link no Storage (bucket `fotos`); fundo da capa do Relatório em PDF (`relatorio-pdf.jsx`) quando preenchida, degradê da marca quando vazia |
+| ativa | boolean | sim | padrão verdadeiro; "desligar" não apaga nada, só esconde do dia a dia |
+| created_at | timestamptz | não | automático |
+
+O nome/data de início de `src/marca.js` e o cabeçalho de `relatorio_semanal_config` (linha única `id = 1`, abaixo) ainda são **globais**, não por obra — só a capa do Relatório já lê `obras.capa_padrao_url`. Ver a nota de `relatorio_semanal_config` e o armadilha correspondente em `CLAUDE.md`.
 
 ---
 
@@ -66,6 +78,7 @@ Dados fixos do cabeçalho do relatório em PDF. **Uma linha só** (`id = 1`), cr
 | updated_at | timestamptz | sim | automático (gatilho) |
 
 > Nota: o app também lê `src/marca.js` (nome da obra, início). Hoje **duas fontes** dizem o nome da obra e a data de início. `[DESCOBRIR NO USO: qual das duas manda]`
+> `capa_padrao_url` aqui é global (uma linha só) e **não** é a foto de capa do Relatório — essa vem de `obras.capa_padrao_url`, por obra (ver acima).
 
 ---
 

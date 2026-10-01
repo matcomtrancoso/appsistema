@@ -57,7 +57,8 @@ export const DADOS_DEMO = {
     id: 'demo-obra-1', nome: 'Residencial Aurora (demo)', codigo: 'OBRA-01',
     localizacao: 'Rua das Palmeiras, 100 — São Paulo/SP', cliente: 'Cliente Exemplo Ltda.',
     arquiteto: 'Estúdio Norte Arquitetura', data_inicio: maisDias(-90),
-    capa_padrao_url: null, assinaturas: [], ativa: true,
+    capa_padrao_url: 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a2a1a"/><stop offset="1" stop-color="#0e3a2b"/></linearGradient></defs><rect width="1200" height="800" fill="url(#g)"/><g stroke="#ffffff22" stroke-width="3"><line x1="0" y1="650" x2="1200" y2="580"/><line x1="0" y1="700" x2="1200" y2="640"/></g><rect x="150" y="300" width="300" height="350" fill="#00000030"/><rect x="500" y="200" width="250" height="450" fill="#00000022"/></svg>'),
+    assinaturas: [], ativa: true,
   }],
 
   rdos: [

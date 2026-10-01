@@ -3,11 +3,12 @@
 // Só quem é administrador chega aqui (o nav esconde o item; a RLS de `obras`
 // e `obra_membros` recusa escrita de quem não é admin de qualquer forma — a
 // tela só evita mostrar um botão que ia dar erro).
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Icon } from '../components/index';
 import { useObraSelecionada } from '../lib/obra-selecionada';
-import { avisarErro } from '../lib/msg-amigavel';
+import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
+import { enviarArquivo } from '../lib/enviar-arquivo';
 
 export function ObrasScreen({ goto, voltarPara = 'home' }) {
   // A lista já mora no contexto (é a mesma que o seletor usa) — evita pedir
@@ -87,9 +88,30 @@ function ObraPopup({ obra, onFechar, onSalvo }) {
   const [arquiteto, setArquiteto] = useState(novo ? '' : (obra.arquiteto || ''));
   const [dataInicio, setDataInicio] = useState(novo ? '' : (obra.data_inicio || ''));
   const [ativa, setAtiva] = useState(novo ? true : obra.ativa !== false);
+  const [capaUrl, setCapaUrl] = useState(novo ? '' : (obra.capa_padrao_url || ''));
+  const [enviandoCapa, setEnviandoCapa] = useState(false);
+  const [erroCapa, setErroCapa] = useState('');
+  const inputCapaRef = useRef(null);
   const [salvando, setSalvando] = useState(false);
 
   const pronto = nome.trim().length > 0;
+
+  async function escolherCapa(e) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setEnviandoCapa(true);
+    setErroCapa('');
+    try {
+      // Cover é bem mais larga que alta (vira o fundo da capa do relatório) —
+      // 1920 em vez do padrão 1600 pra não borrar numa folha A4 inteira.
+      const { url } = await enviarArquivo(file, 'obras-capa', { maxDim: 1920 });
+      setCapaUrl(url);
+    } catch (err) {
+      setErroCapa(msgAmigavel(err, 'enviar a foto de capa'));
+    }
+    setEnviandoCapa(false);
+  }
 
   async function salvar() {
     if (!pronto || salvando) return;
@@ -102,6 +124,7 @@ function ObraPopup({ obra, onFechar, onSalvo }) {
       arquiteto: arquiteto.trim(),
       data_inicio: dataInicio || null,
       ativa,
+      capa_padrao_url: capaUrl || null,
     };
     try {
       if (novo) {
@@ -162,6 +185,38 @@ function ObraPopup({ obra, onFechar, onSalvo }) {
         <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
           style={{ ...campo, marginBottom: 14 }} />
 
+        <div style={rotulo}>FOTO DE CAPA</div>
+        <div className="t-caption" style={{ fontSize: 11, marginBottom: 8, lineHeight: 1.4 }}>
+          Usada como fundo da capa do Relatório (Relatórios → Exportar).
+        </div>
+        <div style={{ position: 'relative', width: '100%', height: 120, borderRadius: 14, overflow: 'hidden', marginBottom: erroCapa ? 6 : 14,
+          background: capaUrl ? `center / cover no-repeat url("${capaUrl}")` : 'var(--surface-2)',
+          boxShadow: capaUrl ? 'inset 0 0 0 1px var(--border)' : 'inset 0 0 0 1.5px dashed var(--border-strong, var(--border))' }}>
+          {!capaUrl && !enviandoCapa && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, color: 'var(--text-3)', fontSize: 11, fontWeight: 700 }}>
+              <span style={{ fontSize: 20 }}>🖼️</span>Sem foto de capa
+            </div>
+          )}
+          {enviandoCapa && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.35)', color: '#fff', fontSize: 12, fontWeight: 800 }}>
+              Enviando…
+            </div>
+          )}
+          {capaUrl && !enviandoCapa && <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(transparent 40%, rgba(0,0,0,.45))' }} />}
+          <div style={{ position: 'absolute', bottom: 8, right: 8, display: 'flex', gap: 6 }}>
+            <button type="button" onClick={() => inputCapaRef.current?.click()} disabled={enviandoCapa}
+              style={{ height: 32, padding: '0 12px', borderRadius: 9, border: 0, cursor: 'pointer', background: capaUrl ? 'rgba(255,255,255,.92)' : 'var(--primary)', color: capaUrl ? 'var(--text-1)' : '#fff', fontSize: 12, fontWeight: 800 }}>
+              {capaUrl ? 'Trocar' : '+ Adicionar'}
+            </button>
+            {capaUrl && !enviandoCapa && (
+              <button type="button" onClick={() => setCapaUrl('')} title="Remover a foto de capa" aria-label="Remover a foto de capa"
+                style={{ width: 32, height: 32, borderRadius: 9, border: 0, cursor: 'pointer', background: 'rgba(255,255,255,.92)', color: 'var(--danger)', fontSize: 14 }}>🗑</button>
+            )}
+          </div>
+        </div>
+        {erroCapa && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 14 }}>{erroCapa}</div>}
+        <input ref={inputCapaRef} type="file" accept="image/*" onChange={escolherCapa} style={{ display: 'none' }} />
+
         {!novo && (
           <button onClick={() => setAtiva(v => !v)}
             style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18,
@@ -186,9 +241,9 @@ function ObraPopup({ obra, onFechar, onSalvo }) {
         <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
           <button onClick={onFechar} style={{ flex: 1, height: 46, borderRadius: 12, border: '0.5px solid var(--border)',
             background: 'var(--surface)', fontSize: 14, fontWeight: 700, color: 'var(--text-2)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancelar</button>
-          <button onClick={salvar} disabled={!pronto || salvando}
+          <button onClick={salvar} disabled={!pronto || salvando || enviandoCapa}
             style={{ flex: 2, height: 46, borderRadius: 12, border: 'none', fontFamily: 'inherit',
-              background: pronto && !salvando ? 'var(--primary)' : 'var(--border)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+              background: pronto && !salvando && !enviandoCapa ? 'var(--primary)' : 'var(--border)', color: '#fff', fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
             {salvando ? 'Salvando…' : novo ? 'Criar obra' : 'Salvar'}
           </button>
         </div>

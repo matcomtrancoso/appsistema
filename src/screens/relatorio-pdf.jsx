@@ -8,6 +8,7 @@ import { hojeLocal, toISODate, parseISODate } from '../lib/date';
 import { chaveDoDia, DIA_ORDEM, DIA_CURTO } from '../lib/atividades-do-dia';
 import { statusDaSemana, contratacoesDaSemana, indicadores, N } from '../lib/fechamento-semana';
 import { MOTIVOS_NAO_EXEC } from '../data/index';
+import { useObraSelecionada } from '../lib/obra-selecionada';
 
 const OBRA_NOME = MARCA.obra;
 const COR = '#1B6B3A';
@@ -1077,6 +1078,41 @@ function PageProjetos({ projetos, from, to }) {
 
 // Só as marcadas "usar no relatório" na Galeria de fotos chegam aqui — o
 // filtro em si é feito na busca (loadAll), esta função só desenha o que veio.
+// Capa do relatório: foto da obra (cadastrada em Obras → editar) em 2º plano,
+// com o nome da obra por cima. Sem foto, um fundo em degradê da marca — nunca
+// fica vazia.
+function PageCapa({ obraAtual, periodLabel, periodoTipo, weekNum }) {
+  const foto = obraAtual?.capa_padrao_url;
+  const nome = obraAtual?.nome || OBRA_NOME;
+  const sub = [obraAtual?.cliente, obraAtual?.localizacao].filter(Boolean).join(' · ');
+  const tipoLabel = periodoTipo === 'semana' ? `Relatório semanal${weekNum ? ' · Semana ' + weekNum : ''}` : 'Relatório mensal';
+  return (
+    <div style={{
+      position: 'relative', minHeight: 460, borderRadius: 6, overflow: 'hidden',
+      background: foto ? `center / cover no-repeat url("${foto}")` : `linear-gradient(135deg, ${PALETTE.primaryDeep}, ${T.ink})`,
+      display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontFamily: T.font,
+    }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.05) 35%, rgba(6,20,15,.86) 100%)' }} />
+      {!foto && <div style={{ position: 'absolute', right: -40, bottom: -60, opacity: 0.12 }}><CRMark size={320} color="#fff" /></div>}
+      <div style={{ position: 'relative', padding: '22px 26px 0', display: 'flex', alignItems: 'center', gap: 9 }}>
+        <CRMark size={20} color={T.accent} />
+        <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, letterSpacing: -0.2 }}>{MARCA.nome}</span>
+      </div>
+      <div style={{ position: 'relative', padding: '0 26px 28px' }}>
+        <div style={{ display: 'inline-block', fontFamily: T.fontMono, fontSize: 10.5, fontWeight: 600, color: '#fff', background: 'rgba(255,255,255,.14)', border: '1px solid rgba(255,255,255,.3)', borderRadius: 999, padding: '4px 12px', marginBottom: 12, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+          {tipoLabel}
+        </div>
+        <h1 style={{ margin: 0, color: '#fff', fontSize: 30, fontWeight: 600, letterSpacing: -0.7, lineHeight: 1.1 }}>{nome}</h1>
+        {sub && <div style={{ color: 'rgba(255,255,255,.8)', fontSize: 12.5, marginTop: 7 }}>{sub}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16 }}>
+          <div style={{ width: 22, height: 1, background: 'rgba(255,255,255,.5)' }} />
+          <div style={{ color: '#fff', fontSize: 12, fontWeight: 600 }}>{periodLabel}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PageFotos({ fotos }) {
   return (
     <div>
@@ -1104,6 +1140,10 @@ function PageFotos({ fotos }) {
 
 // ── Tela principal ────────────────────────────────────────────────────────────
 export function EngRelatorioPDF({ goto }) {
+  // Capa (foto, nome, cliente) é a única coisa deste relatório que já vem da
+  // obra selecionada — o resto do cabeçalho ainda é o MARCA.obra fixo em
+  // src/marca.js (ver CLAUDE.md: "não é por obra ainda").
+  const { obraAtual } = useObraSelecionada();
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [dados, setDados] = useState(null);
@@ -1118,6 +1158,7 @@ export function EngRelatorioPDF({ goto }) {
     return () => window.removeEventListener('resize', mede);
   }, []);
   const [exportSel, setExportSel] = useState({
+    capa: true,
     rdo: true, efetivo: true,
     pendencias: true, equipamentos: true, visitas: true,
     contratacoes: true,
@@ -1143,6 +1184,29 @@ export function EngRelatorioPDF({ goto }) {
 
     // Build a printable HTML in a new window
     const sections = pages.map(p => {
+      if (p.key === 'capa') {
+        const foto = obraAtual?.capa_padrao_url;
+        const nomeObra = esc(obraAtual?.nome || OBRA_NOME);
+        const subCapa = esc([obraAtual?.cliente, obraAtual?.localizacao].filter(Boolean).join(' · '));
+        const tipoLabel = periodoTipo === 'semana' ? `Relatório semanal${weekNum ? ' · Semana ' + weekNum : ''}` : 'Relatório mensal';
+        // Aspas simples no url(): o style inteiro já está entre aspas duplas
+        // (é texto HTML, não um objeto de style do React) — com aspas duplas
+        // nos dois a URL fechava o atributo no meio e cortava o resto do CSS.
+        // esc() não mexe em aspas simples, então escapamos à mão aqui: uma
+        // URL com apóstrofo (valor editado direto no banco, por exemplo)
+        // fecharia o url('...') do mesmo jeito que o bug das aspas duplas.
+        const fotoUrl = foto ? esc(foto).replace(/'/g, '%27') : '';
+        return `<div class="rpt-capa" style="background:${foto ? `center / cover no-repeat url('${fotoUrl}')` : `linear-gradient(135deg,${PALETTE.primaryDeep},${T.ink})`}">
+          <div class="rpt-capa-overlay"></div>
+          <div class="rpt-capa-top"><span class="rpt-mark" style="background:${T.accent}">▲</span>${esc(MARCA.nome)}</div>
+          <div class="rpt-capa-bottom">
+            <div class="rpt-capa-tag">${tipoLabel}</div>
+            <h1>${nomeObra}</h1>
+            ${subCapa ? `<div class="rpt-capa-sub">${subCapa}</div>` : ''}
+            <div class="rpt-capa-periodo"><span></span>${esc(weekLabel)}</div>
+          </div>
+        </div>`;
+      }
       if (p.key === 'rdo') {
         const weekDays = periodoWeekDays;
         const rdoByDate = {};
@@ -1455,15 +1519,23 @@ export function EngRelatorioPDF({ goto }) {
         </div>`;
       }
       return '';
-      // Cada seção sai numa folha de rosto própria (fundo branco, borda fina,
-      // barra colorida à esquerda) em vez de um bloco solto separado por uma
-      // linha — é isso que fazia o PDF parecer uma planilha impressa.
-      // Sem "avoid" aqui: um módulo cheio (Visitas, Contratações, Planejamento numa
-      // semana movimentada) é maior que uma folha, e forçar o cartão inteiro a não
-      // quebrar jogava a folha anterior com um vão em branco embaixo e ainda assim
-      // quebrava no meio do conteúdo. Cada mini-cartão de foto já evita quebra sozinho.
-    }).map((html, i) => html ? `<section class="rpt-card" style="${i > 0 ? 'margin-top:16px' : ''}"><div class="rpt-card-bar"></div><div class="rpt-card-body">${html}</div></section>` : '')
-      .join('');
+    // Cada seção vira um cartão (fundo branco, barra colorida à esquerda) em
+    // vez de um bloco solto separado por uma linha — era isso que fazia o PDF
+    // parecer uma planilha impressa. Sem "avoid" no cartão: um módulo cheio
+    // (Visitas, Contratações, Planejamento numa semana movimentada) é maior
+    // que uma folha, e forçar o cartão inteiro a não quebrar jogava a folha
+    // anterior com um vão em branco embaixo e ainda assim quebrava no meio do
+    // conteúdo. Cada mini-cartão de foto já evita quebra sozinho.
+    }).map((html, i) => {
+      if (!html) return '';
+      // A capa é a folha de rosto: sem a moldura de cartão, ocupa a página
+      // inteira e empurra o resto do relatório para a página seguinte.
+      if (pages[i].key === 'capa') return html;
+      // Primeiro cartão de verdade não leva margem em cima — com a capa
+      // presente ele é o i===1, não o i===0, então não dá para comparar com 0.
+      const primeiroCartao = i === 0 || pages[i - 1].key === 'capa';
+      return `<section class="rpt-card" style="${primeiroCartao ? '' : 'margin-top:16px'}"><div class="rpt-card-bar"></div><div class="rpt-card-body">${html}</div></section>`;
+    }).join('');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${MARCA.nome} — ${weekLabel}</title>
 <style>
@@ -1481,7 +1553,16 @@ body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;backgroun
 .rpt-card-bar{width:5px;background:linear-gradient(180deg,#00B8A4,#1B6B3A);flex-shrink:0}
 .rpt-card-body{padding:16px 18px;flex:1;min-width:0}
 .rpt-foot{text-align:center;color:#8A9A94;font-size:8.5pt;margin-top:26px;padding-top:12px;border-top:1px solid #DCE6E1}
-@media print{body{background:#fff}.rpt-page{padding:0}.rpt-card{box-shadow:none;border:1px solid #E4E7EC}}
+.rpt-capa{position:relative;min-height:600px;border-radius:14px;overflow:hidden;background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:space-between;break-after:page;box-shadow:0 1px 3px rgba(14,58,43,.08)}
+.rpt-capa-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12) 0%,rgba(0,0,0,.05) 35%,rgba(6,20,15,.88) 100%)}
+.rpt-capa-top{position:relative;padding:26px 30px 0;display:flex;align-items:center;gap:9px;color:#fff;font-weight:700;font-size:15px;font-family:'Space Grotesk',sans-serif;letter-spacing:-.2px}
+.rpt-capa-bottom{position:relative;padding:0 30px 34px;color:#fff}
+.rpt-capa-tag{display:inline-block;font-size:10.5px;font-weight:600;color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:4px 12px;margin-bottom:14px;letter-spacing:.4px;text-transform:uppercase}
+.rpt-capa-bottom h1{margin:0;font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:600;letter-spacing:-.7px;line-height:1.12}
+.rpt-capa-sub{font-size:13px;color:rgba(255,255,255,.8);margin-top:8px}
+.rpt-capa-periodo{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:12.5px;font-weight:600}
+.rpt-capa-periodo span{width:22px;height:1px;background:rgba(255,255,255,.5)}
+@media print{body{background:#fff}.rpt-page{padding:0}.rpt-card{box-shadow:none;border:1px solid #E4E7EC}.rpt-capa{box-shadow:none;border-radius:0;min-height:calc(297mm - 24mm)}}
 </style>
 </head><body><div class="rpt-page">
 <div class="rpt-head">
@@ -1657,6 +1738,7 @@ ${sections}
   useEffect(() => { loadAll(mondayStr, sundayStr); }, [periodoTipo, periodoOffset]);
 
   const PAGES = [
+    { key: 'capa',          label: 'Capa',           emoji: '📘' },
     { key: 'rdo',           label: 'RDO',           emoji: '📋' },
     { key: 'efetivo',       label: 'Efetivo',        emoji: '👷' },
     { key: 'pendencias',    label: 'Pendências',     emoji: '✅' },
@@ -1762,11 +1844,14 @@ ${sections}
             minHeight: 400, position: 'relative',
             overflowX: 'auto', WebkitOverflowScrolling: 'touch',
           }}>
-            <div style={{ minWidth: LARGURA_MIN_FOLHA, padding: '18px 16px', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 7.5, color: '#BBB', fontWeight: 600 }}>
+            <div style={{ minWidth: LARGURA_MIN_FOLHA, padding: PAGES[page].key === 'capa' ? 0 : '18px 16px', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 10, right: 12, fontSize: 7.5, fontWeight: 600,
+              color: PAGES[page].key === 'capa' ? 'rgba(255,255,255,0.75)' : '#BBB', zIndex: 1 }}>
               {page + 1}/{total} · {MARCA.nome}
             </div>
-            {PAGES[page].key === 'rdo'          && <PageRDO dados={dados} weekDays={periodoWeekDays} periodLabel={weekLabel} pageNum={page+1} totalPages={total} />}
+            {PAGES[page].key === 'capa'         && <PageCapa obraAtual={obraAtual} periodLabel={weekLabel} periodoTipo={periodoTipo} weekNum={weekNum} />}
+            {/* Capa é PAGES[0] e não é um "módulo" numerado no papel: o RDO continua sendo 1/N dos módulos, descontada a Capa. */}
+            {PAGES[page].key === 'rdo'          && <PageRDO dados={dados} weekDays={periodoWeekDays} periodLabel={weekLabel} pageNum={page} totalPages={total - 1} />}
             {PAGES[page].key === 'efetivo'      && <PageEfetivo rdos={dados.rdos} rdosMes={dados.rdosMes || []} ocorrencias={dados.ocorrencias} weekDays={periodoWeekDays} />}
             {PAGES[page].key === 'pendencias'   && <PagePendencias pendencias={dados.pendencias} />}
             {PAGES[page].key === 'equipamentos' && <PageEquipamentos equipamentos={dados.equipamentos} />}

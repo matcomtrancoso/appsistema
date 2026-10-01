@@ -304,7 +304,8 @@
     "storage_path",
     "autor_nome",
     "created_at",
-    "obra_id"
+    "obra_id",
+    "usar_no_relatorio"
   ],
   "relatorio_semanal_config": [
     "id",

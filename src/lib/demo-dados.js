@@ -179,7 +179,18 @@ export const DADOS_DEMO = {
   ],
 
   fotos: [],
-  rdo_fotos: [],
+  // SVG embutido (sem depender de internet no demo) só pra ter o que mostrar
+  // na Galeria e no módulo Fotos do relatório. `usar_no_relatorio` já nasce
+  // marcado em duas, pra ver o filtro funcionando de cara.
+  rdo_fotos: (() => {
+    const svg = (cor, letra) => 'data:image/svg+xml;utf8,' + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><rect width="400" height="400" fill="${cor}"/><text x="200" y="220" font-size="120" fill="#fff" text-anchor="middle" font-family="sans-serif">${letra}</text></svg>`);
+    return [
+      { id: 'f1', rdo_id: RDO_HOJE, data: iso(hoje), pavimento: '1º Pavimento', ambiente: '1º Pavimento', servico: 'Alvenaria de vedação — eixo 3 a 7', empresa: 'Alvenaria Souza', autor_nome: 'João', legenda: 'Alvenaria eixo 3 a 7', url: svg('#136066', '1'), usar_no_relatorio: true },
+      { id: 'f2', rdo_id: RDO_HOJE, data: iso(hoje), pavimento: '2º Pavimento', ambiente: '2º Pavimento', servico: 'Infra elétrica de laje', empresa: 'Elétrica Nova Luz', autor_nome: 'João', legenda: 'Infra elétrica de laje', url: svg('#1A7C83', '2'), usar_no_relatorio: true },
+      { id: 'f3', rdo_id: 'r2', data: maisDias(-1), pavimento: 'Térreo', ambiente: 'Térreo', servico: 'Chapisco do térreo', empresa: 'Alvenaria Souza', autor_nome: 'João', legenda: 'Chapisco do térreo', url: svg('#9A6700', '3'), usar_no_relatorio: false },
+    ];
+  })(),
   plantas_visuais: [],
   planta_marcacoes: [],
   planta_etapas: [],

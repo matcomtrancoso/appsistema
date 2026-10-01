@@ -729,8 +729,10 @@ function PassoImprevistos({ rdoId, profile, dataRDO, avancar }) {
 }
 
 // ── Passo 4: foto do dia, revisão e salvar ─────────────────────────────────
-// A foto aqui é do dia inteiro, não de uma frente: é a que vai para o relatório
-// semanal. As fotos por frente continuam saindo pelo 📷 do passo 2.
+// A foto aqui é do dia inteiro, não de uma frente (as por frente continuam
+// saindo pelo 📷 do passo 2). Ela só entra no relatório semanal se alguém
+// marcar a estrela "usar no relatório" depois, na Galeria de fotos — subir
+// aqui não marca sozinho (ver rdo_fotos.usar_no_relatorio).
 function PassoRevisao({ rdoId, profile, atividades = [], efetivo = [], submitDaily, dataRDO, onEncerrar, onOutraEquipe }) {
   const [fotos, setFotos] = useState([]);
   const [enviando, setEnviando] = useState(false);
@@ -783,7 +785,8 @@ function PassoRevisao({ rdoId, profile, atividades = [], efetivo = [], submitDai
 
   return (
     <div>
-      <div className="t-micro" style={{ marginBottom: 8 }}>FOTO DO DIA</div>
+      <div className="t-micro" style={{ marginBottom: 2 }}>FOTO DO DIA</div>
+      <div className="t-caption" style={{ fontSize: 11, marginBottom: 8 }}>Para entrar no relatório semanal, marque a estrela depois na Galeria de fotos.</div>
 
       {fotos.length > 0 && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>

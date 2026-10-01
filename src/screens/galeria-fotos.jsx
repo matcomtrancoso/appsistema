@@ -6,7 +6,9 @@ import { avisarErro } from '../lib/msg-amigavel';
 
 // Galeria das fotos do RDO. Três modos: Por dia (feed), Por pavimento e
 // Por ambiente (a evolução do ambiente no tempo). Toca numa foto pra ampliar,
-// baixar. (A seleção "usar no relatório" entra numa próxima leva.)
+// baixar. A estrela (canto de cada foto, ou dentro da ampliada) marca
+// `usar_no_relatorio` — só essas entram no módulo Fotos de Relatórios; sem
+// isso, toda foto do canteiro iria para o PDF.
 
 function rotuloDia(iso) {
   const [a, m, d] = String(iso || '').slice(0, 10).split('-');
@@ -22,6 +24,12 @@ function rotuloDia(iso) {
 
 const ABAS = [{ k: 'dia', l: 'Por dia' }, { k: 'pavimento', l: 'Pavimento' }, { k: 'ambiente', l: 'Ambiente' }];
 
+// Cor única da estrela "usar no relatório" — repete em 4 lugares (miniatura da
+// grade, da linha por ambiente, da foto ampliada e do botão em lote); mudar a
+// cor um dia é mudar aqui, não caçar os quatro.
+const COR_RELATORIO = '#F59E0B';
+const rotuloEstrela = (marcada) => (marcada ? 'Tirar do relatório' : 'Usar no relatório');
+
 export function GaleriaFotos({ goto, voltarPara = 'home' }) {
   const [fotos, setFotos] = useState(null);
   const [aba, setAba] = useState('dia');
@@ -32,6 +40,7 @@ export function GaleriaFotos({ goto, voltarPara = 'home' }) {
   const [selecionadas, setSelecionadas] = useState(() => new Set());
   const [baixando, setBaixando] = useState(false);
   const [apagando, setApagando] = useState(false);
+  const [marcando, setMarcando] = useState(false);
   const toggleSel = (id) => setSelecionadas(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const sairSelecao = () => { setSelMode(false); setSelecionadas(new Set()); };
   const baixarSelecionadas = async () => {
@@ -69,6 +78,38 @@ export function GaleriaFotos({ goto, voltarPara = 'home' }) {
     }
     setFotos(fs => (fs || []).filter(f => !selecionadas.has(f.id)));
     setApagando(false);
+    sairSelecao();
+  };
+
+  // Marca/desmarca uma foto para o relatório. Otimista (muda a tela na hora);
+  // se o banco recusar, devolve como estava. Atualiza a ampliada também (se for
+  // a mesma foto), senão ela ficava mostrando o estado antigo até fechar e abrir
+  // de novo — fora de sincronia com a miniatura, que já tinha corrigido sozinha.
+  const marcarRelatorio = async (f, valor) => {
+    const aplicar = (v) => {
+      setFotos(fs => (fs || []).map(x => (x.id === f.id ? { ...x, usar_no_relatorio: v } : x)));
+      setAberta(prev => (prev && prev.id === f.id ? { ...prev, usar_no_relatorio: v } : prev));
+    };
+    aplicar(valor);
+    const { error } = await supabase.from('rdo_fotos').update({ usar_no_relatorio: valor }).eq('id', f.id);
+    if (error) { avisarErro(error, 'marcar a foto para o relatório'); aplicar(!valor); }
+  };
+
+  // Em lote: se todas as selecionadas já estão marcadas, desmarca; senão marca
+  // todas de uma vez (é o que a pessoa normalmente quer ao selecionar várias).
+  // Precisa de pelo menos uma selecionada: `.every` em lista vazia dá `true`
+  // sozinho, o que deixava o botão nascendo como "Tirar" sem nada marcado.
+  const marcadasPorId = useMemo(() => new Map((fotos || []).map(f => [f.id, f.usar_no_relatorio])), [fotos]);
+  const todasMarcadas = selecionadas.size > 0 && [...selecionadas].every(id => marcadasPorId.get(id));
+  const marcarSelecionadas = async () => {
+    if (marcando || selecionadas.size === 0) return;
+    const valor = !todasMarcadas;
+    const ids = [...selecionadas];
+    setMarcando(true);
+    setFotos(fs => (fs || []).map(x => (ids.includes(x.id) ? { ...x, usar_no_relatorio: valor } : x)));
+    const { error } = await supabase.from('rdo_fotos').update({ usar_no_relatorio: valor }).in('id', ids);
+    setMarcando(false);
+    if (error) { avisarErro(error, 'marcar as fotos para o relatório'); return; }
     sairSelecao();
   };
 
@@ -151,7 +192,8 @@ export function GaleriaFotos({ goto, voltarPara = 'home' }) {
                   <span>{rotuloDia(dia)}</span><span>{lista.length} foto{lista.length !== 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
-                  {lista.map(f => <Miniatura key={f.id} f={f} selMode={selMode} selected={selecionadas.has(f.id)} onClick={() => selMode ? toggleSel(f.id) : setAberta(f)} />)}
+                  {lista.map(f => <Miniatura key={f.id} f={f} selMode={selMode} selected={selecionadas.has(f.id)}
+                    onClick={() => selMode ? toggleSel(f.id) : setAberta(f)} onMarcar={v => marcarRelatorio(f, v)} />)}
                 </div>
               </div>
             ))}
@@ -186,6 +228,11 @@ export function GaleriaFotos({ goto, voltarPara = 'home' }) {
                       <div style={{ position: 'relative', flexShrink: 0 }} onClick={() => selMode ? toggleSel(f.id) : setAberta(f)}>
                         <img src={f.url} alt="" loading="lazy" decoding="async" style={{ width: 66, height: 66, borderRadius: 10, objectFit: 'cover', cursor: 'pointer', background: 'var(--surface-2)', display: 'block', outline: selMode && selecionadas.has(f.id) ? '2.5px solid var(--primary)' : 'none', outlineOffset: '-2px' }} />
                         {selMode && <div style={{ position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 999, background: selecionadas.has(f.id) ? 'var(--primary)' : 'rgba(255,255,255,.85)', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 900 }}>{selecionadas.has(f.id) ? '✓' : ''}</div>}
+                        {!selMode && (
+                          <button onClick={e => { e.stopPropagation(); marcarRelatorio(f, !f.usar_no_relatorio); }}
+                            title={rotuloEstrela(f.usar_no_relatorio)} aria-label={rotuloEstrela(f.usar_no_relatorio)}
+                            style={{ position: 'absolute', top: 5, right: 5, width: 20, height: 20, borderRadius: 999, border: 0, cursor: 'pointer', background: f.usar_no_relatorio ? COR_RELATORIO : 'rgba(0,0,0,.4)', color: '#fff', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>
+                        )}
                       </div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 800 }}>{rotuloDia(f.data)}</div>
@@ -201,30 +248,41 @@ export function GaleriaFotos({ goto, voltarPara = 'home' }) {
       </div>
 
       {selMode && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '10px 14px calc(12px + env(safe-area-inset-bottom))', display: 'flex', gap: 8, alignItems: 'center', zIndex: 700 }}>
-          <div style={{ flex: 1, fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)' }}>{selecionadas.size} selecionada{selecionadas.size !== 1 ? 's' : ''}</div>
-          <button onClick={apagarSelecionadas} disabled={selecionadas.size === 0 || apagando || baixando}
-            style={{ height: 44, padding: '0 14px', borderRadius: 12, border: 0, cursor: selecionadas.size ? 'pointer' : 'default', background: selecionadas.size ? 'var(--danger)' : 'var(--surface-2)', color: selecionadas.size ? '#fff' : 'var(--text-3)', fontWeight: 800, fontSize: 13 }}>
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '10px 14px calc(12px + env(safe-area-inset-bottom))', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'flex-end', zIndex: 700 }}>
+          <div style={{ flex: '1 1 auto', minWidth: 90, fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)' }}>{selecionadas.size} selecionada{selecionadas.size !== 1 ? 's' : ''}</div>
+          <button onClick={marcarSelecionadas} disabled={selecionadas.size === 0 || marcando || apagando || baixando}
+            style={{ height: 44, padding: '0 12px', borderRadius: 12, border: 0, cursor: selecionadas.size ? 'pointer' : 'default', background: selecionadas.size ? COR_RELATORIO : 'var(--surface-2)', color: selecionadas.size ? '#fff' : 'var(--text-3)', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }}>
+            {marcando ? '…' : todasMarcadas ? '☆ Tirar' : '★ Relatório'}
+          </button>
+          <button onClick={apagarSelecionadas} disabled={selecionadas.size === 0 || apagando || baixando || marcando}
+            style={{ height: 44, padding: '0 14px', borderRadius: 12, border: 0, cursor: selecionadas.size ? 'pointer' : 'default', background: selecionadas.size ? 'var(--danger)' : 'var(--surface-2)', color: selecionadas.size ? '#fff' : 'var(--text-3)', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }}>
             {apagando ? 'Apagando…' : '🗑 Apagar'}
           </button>
-          <button onClick={baixarSelecionadas} disabled={selecionadas.size === 0 || baixando || apagando}
-            style={{ height: 44, padding: '0 16px', borderRadius: 12, border: 0, cursor: selecionadas.size ? 'pointer' : 'default', background: selecionadas.size ? 'var(--primary)' : 'var(--surface-2)', color: selecionadas.size ? '#fff' : 'var(--text-3)', fontWeight: 800, fontSize: 13 }}>
+          <button onClick={baixarSelecionadas} disabled={selecionadas.size === 0 || baixando || apagando || marcando}
+            style={{ height: 44, padding: '0 16px', borderRadius: 12, border: 0, cursor: selecionadas.size ? 'pointer' : 'default', background: selecionadas.size ? 'var(--primary)' : 'var(--surface-2)', color: selecionadas.size ? '#fff' : 'var(--text-3)', fontWeight: 800, fontSize: 13, whiteSpace: 'nowrap' }}>
             {baixando ? 'Baixando…' : `⬇ Baixar (${selecionadas.size})`}
           </button>
         </div>
       )}
 
-      {aberta && <FotoAmpliada f={aberta} onClose={() => setAberta(null)} onApagar={apagarUma} />}
+      {aberta && <FotoAmpliada f={aberta} onClose={() => setAberta(null)} onApagar={apagarUma}
+        onMarcar={v => marcarRelatorio(aberta, v)} />}
     </div>
   );
 }
 
-function Miniatura({ f, onClick, selMode, selected }) {
+function Miniatura({ f, onClick, selMode, selected, onMarcar }) {
   return (
     <button onClick={onClick} style={{ position: 'relative', aspectRatio: '1', borderRadius: 9, overflow: 'hidden', border: 0, padding: 0, cursor: 'pointer', background: 'var(--surface-2)', display: 'flex', alignItems: 'flex-end', outline: selMode && selected ? '2.5px solid var(--primary)' : 'none', outlineOffset: '-2px' }}>
       <img src={f.url} alt="" loading="lazy" decoding="async" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       {selMode && (
         <div style={{ position: 'absolute', top: 5, right: 5, width: 19, height: 19, borderRadius: 999, background: selected ? 'var(--primary)' : 'rgba(255,255,255,.8)', border: '1.5px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 900 }}>{selected ? '✓' : ''}</div>
+      )}
+      {!selMode && onMarcar && (
+        <div onClick={e => { e.stopPropagation(); onMarcar(!f.usar_no_relatorio); }} role="button" tabIndex={0}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onMarcar(!f.usar_no_relatorio); } }}
+          title={rotuloEstrela(f.usar_no_relatorio)} aria-label={rotuloEstrela(f.usar_no_relatorio)}
+          style={{ position: 'absolute', top: 5, right: 5, width: 20, height: 20, borderRadius: 999, background: f.usar_no_relatorio ? COR_RELATORIO : 'rgba(0,0,0,.4)', color: '#fff', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</div>
       )}
       <div style={{ position: 'relative', width: '100%', fontSize: 8, fontWeight: 700, color: '#fff', background: 'linear-gradient(transparent,rgba(0,0,0,.65))', padding: '12px 5px 4px', lineHeight: 1.2, textAlign: 'left' }}>
         {[f.servico, f.ambiente].filter(Boolean).join(' · ')}
@@ -233,16 +291,28 @@ function Miniatura({ f, onClick, selMode, selected }) {
   );
 }
 
-function FotoAmpliada({ f, onClose, onApagar }) {
+function FotoAmpliada({ f, onClose, onApagar, onMarcar }) {
   const nome = ((f.legenda || 'foto').replace(/[^\wÀ-ſ]+/g, '-')) + '.jpg';
+  const marcada = !!f.usar_no_relatorio;
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 800, background: 'rgba(0,0,0,0.82)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 16 }}>
       <div onClick={e => e.stopPropagation()}>
         <img src={f.url} alt="" style={{ width: '100%', maxHeight: '58vh', objectFit: 'contain', borderRadius: 12, background: '#000' }} />
         <div style={{ background: 'var(--surface)', borderRadius: 14, padding: 14, marginTop: 12 }}>
-          <div style={{ fontSize: 15, fontWeight: 800 }}>{f.servico || 'Foto'}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
-            📍 {[f.pavimento, f.ambiente].filter(Boolean).join(' · ') || 'sem local'} · {String(f.data || '').slice(0, 10).split('-').reverse().join('/')}
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 800 }}>{f.servico || 'Foto'}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-3)', marginTop: 3 }}>
+                📍 {[f.pavimento, f.ambiente].filter(Boolean).join(' · ') || 'sem local'} · {String(f.data || '').slice(0, 10).split('-').reverse().join('/')}
+              </div>
+            </div>
+            {onMarcar && (
+              <button onClick={() => onMarcar(!marcada)} title={rotuloEstrela(marcada)}
+                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5, height: 32, padding: '0 10px', borderRadius: 999, border: 0, cursor: 'pointer',
+                  background: marcada ? COR_RELATORIO : 'var(--surface-2)', color: marcada ? '#fff' : 'var(--text-2)', fontSize: 11.5, fontWeight: 800 }}>
+                ★ {marcada ? 'No relatório' : 'Usar no relatório'}
+              </button>
+            )}
           </div>
           <div style={{ display: 'flex', gap: 7, marginTop: 10, flexWrap: 'wrap' }}>
             {f.autor_nome && <span style={{ fontSize: 10.5, fontWeight: 800, background: 'var(--surface-2)', borderRadius: 8, padding: '4px 9px' }}>👤 {f.autor_nome}</span>}

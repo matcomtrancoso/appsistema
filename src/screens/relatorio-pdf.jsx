@@ -1,4 +1,5 @@
 import { MARCA } from '../marca.js';
+import { esc } from '../lib/pdf-cabecalho.js';
 import { useState, useEffect } from 'react';
 import { Icon } from '../components/index';
 import { supabase } from '../lib/supabase';
@@ -1074,6 +1075,33 @@ function PageProjetos({ projetos, from, to }) {
   );
 }
 
+// Só as marcadas "usar no relatório" na Galeria de fotos chegam aqui — o
+// filtro em si é feito na busca (loadAll), esta função só desenha o que veio.
+function PageFotos({ fotos }) {
+  return (
+    <div>
+      <H>📷 Fotos do Período</H>
+      <div style={{ marginBottom: 8, fontSize: 9, color: '#888' }}>
+        {fotos.length} foto{fotos.length !== 1 ? 's' : ''} marcada{fotos.length !== 1 ? 's' : ''} para o relatório na Galeria de fotos
+      </div>
+      {fotos.length === 0 && <Empty msg="Nenhuma foto marcada 'usar no relatório' neste período. Marque na Galeria de fotos (a estrela em cada foto)." />}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+        {fotos.map(f => (
+          <div key={f.id} style={{ border: '1px solid #E5E5E5', borderRadius: 6, overflow: 'hidden', breakInside: 'avoid' }}>
+            <img src={f.url} alt="" style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', display: 'block', background: '#F3F3F3' }} />
+            <div style={{ padding: '5px 6px' }}>
+              <div style={{ fontSize: 8, fontWeight: 700, lineHeight: 1.3 }}>{f.servico || f.legenda || 'Foto'}</div>
+              <div style={{ fontSize: 7, color: '#999', marginTop: 1 }}>
+                {[fmtDate(f.data), f.pavimento || f.ambiente, f.empresa].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Tela principal ────────────────────────────────────────────────────────────
 export function EngRelatorioPDF({ goto }) {
   const [page, setPage] = useState(0);
@@ -1093,7 +1121,7 @@ export function EngRelatorioPDF({ goto }) {
     rdo: true, efetivo: true,
     pendencias: true, equipamentos: true, visitas: true,
     contratacoes: true,
-    planejamento: true, projetos: true,
+    planejamento: true, projetos: true, fotos: true,
   });
   const [exporting, setExporting] = useState(false);
 
@@ -1406,21 +1434,66 @@ export function EngRelatorioPDF({ goto }) {
           ${linhas || '<div style="color:#999;font-style:italic;padding:8px 0">Nenhum projeto previsto ou recebido no período.</div>'}
         </div>`;
       }
+      if (p.key === 'fotos') {
+        const fotos = dados.fotos || [];
+        // Serviço/pavimento/ambiente/empresa são texto livre (quem lançou o RDO digitou) —
+        // sem escapar, um valor com `"` ou `<` quebra o HTML impresso (ou pior, injeta
+        // script na janela de impressão, que é da mesma origem do app).
+        const card = (f) => `<div style="border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;break-inside:avoid;page-break-inside:avoid">
+          <img src="${esc(f.url)}" style="width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:#F3F3F3">
+          <div style="padding:5px 6px">
+            <div style="font-size:8px;font-weight:700;line-height:1.3">${esc(f.servico || f.legenda || 'Foto')}</div>
+            <div style="font-size:7px;color:#999;margin-top:1px">${esc([fmtDate(f.data), f.pavimento || f.ambiente, f.empresa].filter(Boolean).join(' · '))}</div>
+          </div>
+        </div>`;
+        return `<div style="margin-bottom:20px">
+          <div style="font-weight:800;font-size:11px;color:#1B6B3A;margin-bottom:6px;text-transform:uppercase">📷 Fotos do Período</div>
+          <div style="margin-bottom:8px;font-size:9px;color:#888">${fotos.length} foto${fotos.length !== 1 ? 's' : ''} marcada${fotos.length !== 1 ? 's' : ''} para o relatório na Galeria de fotos</div>
+          ${fotos.length === 0
+            ? '<div style="color:#999;font-style:italic;padding:8px 0">Nenhuma foto marcada \'usar no relatório\' neste período.</div>'
+            : `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">${fotos.map(card).join('')}</div>`}
+        </div>`;
+      }
       return '';
-    }).join('<div style="height:1px;background:#e5e5e5;margin:18px 0"></div>');
+      // Cada seção sai numa folha de rosto própria (fundo branco, borda fina,
+      // barra colorida à esquerda) em vez de um bloco solto separado por uma
+      // linha — é isso que fazia o PDF parecer uma planilha impressa.
+      // Sem "avoid" aqui: um módulo cheio (Visitas, Contratações, Planejamento numa
+      // semana movimentada) é maior que uma folha, e forçar o cartão inteiro a não
+      // quebrar jogava a folha anterior com um vão em branco embaixo e ainda assim
+      // quebrava no meio do conteúdo. Cada mini-cartão de foto já evita quebra sozinho.
+    }).map((html, i) => html ? `<section class="rpt-card" style="${i > 0 ? 'margin-top:16px' : ''}"><div class="rpt-card-bar"></div><div class="rpt-card-body">${html}</div></section>` : '')
+      .join('');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${MARCA.nome} — ${weekLabel}</title>
-<style>*{box-sizing:border-box;margin:0;padding:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif}body{padding:24px;color:#1B1B1B;font-size:9.5pt;line-height:1.45;max-width:900px;margin:0 auto}@media print{body{padding:0}}</style>
-</head><body>
-<div style="margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid #1B6B3A;display:flex;align-items:center;justify-content:space-between">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;background:#F3F5F4;color:#1B1B1B;font-size:9.5pt;line-height:1.45}
+.rpt-page{max-width:900px;margin:0 auto;padding:28px 24px 40px}
+.rpt-head{background:#0E3A2B;color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.rpt-brand{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+.rpt-mark{width:20px;height:20px;border-radius:5px;background:#00B8A4;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+.rpt-meta{font-size:10.5px;color:#B8C2C4;margin-top:5px}
+.rpt-badge{background:rgba(255,255,255,.12);border-radius:8px;padding:8px 14px;text-align:right;flex-shrink:0}
+.rpt-badge b{display:block;font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}
+.rpt-card{background:#fff;border-radius:12px;overflow:hidden;display:flex;box-shadow:0 1px 3px rgba(14,58,43,.08)}
+.rpt-card-bar{width:5px;background:linear-gradient(180deg,#00B8A4,#1B6B3A);flex-shrink:0}
+.rpt-card-body{padding:16px 18px;flex:1;min-width:0}
+.rpt-foot{text-align:center;color:#8A9A94;font-size:8.5pt;margin-top:26px;padding-top:12px;border-top:1px solid #DCE6E1}
+@media print{body{background:#fff}.rpt-page{padding:0}.rpt-card{box-shadow:none;border:1px solid #E4E7EC}}
+</style>
+</head><body><div class="rpt-page">
+<div class="rpt-head">
   <div>
-    <div style="font-size:18px;font-weight:900;color:#087B8B">${MARCA.nome}</div>
-    <div style="font-size:11px;font-weight:700">${OBRA_NOME} · ${periodoTipo === 'semana' ? ('Relatório Semanal' + (weekNum ? ' · Semana ' + weekNum : '')) : 'Relatório Mensal'} · ${weekLabel}</div>
-    <div style="font-size:9px;color:#888">Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+    <div class="rpt-brand"><span class="rpt-mark">▲</span>${MARCA.nome}</div>
+    <div class="rpt-meta">${OBRA_NOME} · ${periodoTipo === 'semana' ? ('Relatório semanal' + (weekNum ? ' · Semana ' + weekNum : '')) : 'Relatório mensal'}</div>
   </div>
+  <div class="rpt-badge">${weekLabel}<b>${new Date().toLocaleDateString('pt-BR')}</b></div>
 </div>
 ${sections}
-</body></html>`;
+<div class="rpt-foot">${OBRA_NOME} · Relatório gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+</div></body></html>`;
 
     const win = window.open('', '_blank');
     if (!win) { alert('Permita pop-ups no navegador para gerar o PDF.'); setExporting(false); return; }
@@ -1523,26 +1596,36 @@ ${sections}
       ocorrencias = oc || [];
     }
 
-    // Contratações em aberto ao fim do período escolhido. Usava TODAY (constante
-    // de módulo), então imprimir uma semana passada trazia o estado de hoje.
-    const { data: contratacoes } = await supabase
-      .from('contratacoes')
-      .select('*')
-      .or(`data_aprovacao.is.null,data_aprovacao.gte.${toStr}`)
-      .order('created_at', { ascending: false });
-
-    // Contratações completas para o Planejamento Semanal: a query acima corta
-    // as aprovadas antes do fim do período, e o previsto × realizado precisa
-    // exatamente delas (aprovada na semana = C).
-    const { data: contratacoesPlan } = await supabase
-      .from('contratacoes')
-      .select('id, descricao, responsavel_nome, fornecedor_nome, prazo_envio, data_envio, data_aprovacao');
-
-    // Projetos para o previsto × realizado de recebimento. O filtro de período
-    // é no cliente: a linha entra se a previsão OU o recebimento cair no período.
-    const { data: projetos } = await supabase
-      .from('projetos')
-      .select('*');
+    // Contratações (duas vezes, com recortes diferentes), Projetos e Fotos não
+    // dependem umas das outras nem do que já foi buscado — iam em sequência,
+    // uma esperando a anterior terminar à toa.
+    const [
+      { data: contratacoes },
+      { data: contratacoesPlan },
+      { data: projetos },
+      { data: fotos },
+    ] = await Promise.all([
+      // Contratações em aberto ao fim do período escolhido. Usava TODAY (constante
+      // de módulo), então imprimir uma semana passada trazia o estado de hoje.
+      supabase.from('contratacoes').select('*')
+        .or(`data_aprovacao.is.null,data_aprovacao.gte.${toStr}`)
+        .order('created_at', { ascending: false }),
+      // Contratações completas para o Planejamento Semanal: a query acima corta
+      // as aprovadas antes do fim do período, e o previsto × realizado precisa
+      // exatamente delas (aprovada na semana = C).
+      supabase.from('contratacoes')
+        .select('id, descricao, responsavel_nome, fornecedor_nome, prazo_envio, data_envio, data_aprovacao'),
+      // Projetos para o previsto × realizado de recebimento. O filtro de período
+      // é no cliente: a linha entra se a previsão OU o recebimento cair no período.
+      supabase.from('projetos').select('*'),
+      // Fotos marcadas "usar no relatório" (Galeria de fotos) dentro do período —
+      // com muita foto por obra, ninguém quer TODAS indo pro PDF.
+      supabase.from('rdo_fotos')
+        .select('id,data,pavimento,ambiente,servico,empresa,legenda,url,autor_nome')
+        .eq('usar_no_relatorio', true)
+        .gte('data', fromStr).lte('data', toStr)
+        .order('data'),
+    ]);
 
     // RDOs do mês DO PERÍODO escolhido (usava sempre o mês corrente, então a aba
     // "Mês" do efetivo mostrava o mês atual mesmo com "mês anterior" selecionado).
@@ -1567,6 +1650,7 @@ ${sections}
       contratacoes: contratacoes || [],
       contratacoesPlan: contratacoesPlan || [],
       projetos: projetos || [],
+      fotos: fotos || [],
     });
     setLoading(false);
   }
@@ -1581,6 +1665,7 @@ ${sections}
     { key: 'contratacoes',  label: 'Contratações',   emoji: '📄' },
     { key: 'planejamento',  label: 'Planejamento',   emoji: '📊' },
     { key: 'projetos',      label: 'Projetos',       emoji: '📐' },
+    { key: 'fotos',         label: 'Fotos',          emoji: '📷' },
   ];
   const total = PAGES.length;
 
@@ -1689,6 +1774,7 @@ ${sections}
             {PAGES[page].key === 'contratacoes' && <PageContratacoes contratacoes={dados.contratacoes || []} />}
             {PAGES[page].key === 'planejamento' && <PagePlanejamento dados={dados} from={mondayStr} to={sundayStr} />}
             {PAGES[page].key === 'projetos'     && <PageProjetos projetos={dados.projetos || []} from={mondayStr} to={sundayStr} />}
+            {PAGES[page].key === 'fotos'        && <PageFotos fotos={dados.fotos || []} />}
             </div>
           </div>
         )}

@@ -190,6 +190,9 @@ Fotos do dia, catalogadas por local e serviço.
 | storage_path | text | não | caminho no Storage (para apagar o arquivo) |
 | autor_nome | text | não | |
 | created_at | timestamptz | sim | |
+| usar_no_relatorio | boolean | sim | padrão `false`; marcada na Galeria de fotos (estrela). Só essas entram no módulo **Fotos** do relatório (`20260930-rdo-fotos-relatorio.sql`) |
+
+Índice parcial `(obra_id, data) where usar_no_relatorio`: é a consulta do relatório (marcadas do período).
 
 Índices: `rdo_id`, `data`, `ambiente`.
 

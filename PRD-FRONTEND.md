@@ -382,8 +382,8 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 ## Tela: Galeria de fotos
 
 **Quem acessa:** engenharia e mestre. `[VISTO só o vazio]`
-**O que aparece:** "Galeria de fotos" com abas **Por dia · Pavimento · Ambiente**. Fotos vêm dos cartões do RDO.
-**Ações:** abrir foto (visualizador com legenda); apagar foto. `[A CONFERIR: se o mestre vê o botão de apagar]`
+**O que aparece:** "Galeria de fotos" com abas **Por dia · Pavimento · Ambiente**. Fotos vêm dos cartões do RDO. Cada foto tem uma **estrela** no canto (fora do modo seleção): marca/desmarca `usar_no_relatorio` — é o que decide se ela entra no módulo **Fotos** do relatório semanal/mensal; sem marcar nada, o módulo sai vazio.
+**Ações:** abrir foto (visualizador com legenda, estrela "usar no relatório", baixar, apagar); no modo **☑️ Selecionar**, em lote: **★ Relatório / ☆ Tirar** (marca todas se alguma não estiver marcada; desmarca todas se já estiverem todas marcadas), apagar, baixar. `[A CONFERIR: se o mestre vê o botão de apagar]`
 **Estado vazio:** "Nenhuma foto ainda. Tire fotos pela camerinha nos cards do RDO: elas aparecem aqui."
 
 ## Tela: Cadastros base
@@ -396,9 +396,9 @@ A bolinha vermelha "Pendências" na barra inferior mostra quantas estão em aber
 ## Tela: Relatórios
 
 **Quem acessa:** engenharia e visitante. `[VISTO]`
-**O que aparece:** "Relatório da obra — Aqui você monta o relatório com os módulos que quiser — RDO, efetivo, pendências, equipamentos, visitas e contratações — escolha o período e imprima ou salve em PDF na próxima tela." Botão **Montar relatório**.
-**Tela seguinte (Montar relatório):** "Relatório semanal · Semana N", seletor **Semana | Mês** com setas de período, abas de módulo (RDO, Efetivo, Pendências, Equipamentos, Visitas, Contratações, Planejamento...), pré-visualização da página ("Visão geral da semana": efetivo médio, atividades em andamento, pendências abertas, PPC — percentual de planos concluídos, atividades em destaque) e botão **Exportar**.
-**Ações:** escolher período e módulos, ver a prévia página a página, **Exportar** (imprimir ou salvar em PDF).
+**O que aparece:** "Relatório da obra — Aqui você monta o relatório com os módulos que quiser — RDO, efetivo, pendências, equipamentos, visitas, contratações e fotos — escolha o período e imprima ou salve em PDF na próxima tela." Botão **Montar relatório**.
+**Tela seguinte (Montar relatório):** "Relatório semanal · Semana N", seletor **Semana | Mês** com setas de período, abas de módulo (RDO, Efetivo, Pendências, Equipamentos, Visitas, Contratações, Planejamento, Projetos, **Fotos**), pré-visualização da página ("Visão geral da semana": efetivo médio, atividades em andamento, pendências abertas, PPC — percentual de planos concluídos, atividades em destaque) e botão **Exportar**. O módulo **Fotos** mostra em grade só as fotos marcadas "usar no relatório" na Galeria de fotos, dentro do período escolhido — não é a galeria inteira.
+**Ações:** escolher período e módulos, ver a prévia página a página, **Exportar** (imprimir ou salvar em PDF; o PDF sai com um cabeçalho colorido e cada módulo dentro de um cartão com barra lateral, não mais linhas soltas).
 **Dados fixos do cabeçalho:** `relatorio_semanal_config` (código da obra, local, arquiteto, cliente, logo, capa, assinaturas).
 
 ## Tela: Painel de admin (Usuários)

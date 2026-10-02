@@ -1189,14 +1189,12 @@ export function EngRelatorioPDF({ goto }) {
         const nomeObra = esc(obraAtual?.nome || OBRA_NOME);
         const subCapa = esc([obraAtual?.cliente, obraAtual?.localizacao].filter(Boolean).join(' · '));
         const tipoLabel = periodoTipo === 'semana' ? `Relatório semanal${weekNum ? ' · Semana ' + weekNum : ''}` : 'Relatório mensal';
-        // Aspas simples no url(): o style inteiro já está entre aspas duplas
-        // (é texto HTML, não um objeto de style do React) — com aspas duplas
-        // nos dois a URL fechava o atributo no meio e cortava o resto do CSS.
-        // esc() não mexe em aspas simples, então escapamos à mão aqui: uma
-        // URL com apóstrofo (valor editado direto no banco, por exemplo)
-        // fecharia o url('...') do mesmo jeito que o bug das aspas duplas.
-        const fotoUrl = foto ? esc(foto).replace(/'/g, '%27') : '';
-        return `<div class="rpt-capa" style="background:${foto ? `center / cover no-repeat url('${fotoUrl}')` : `linear-gradient(135deg,${PALETTE.primaryDeep},${T.ink})`}">
+        // A foto é um <img>, não um background: o navegador NÃO imprime fundo
+        // CSS por padrão (só com "Gráficos de segundo plano" marcado), e a capa
+        // saía em branco. <img> sempre imprime e ainda segura o window.onload
+        // até carregar, então o print não dispara antes da foto chegar.
+        return `<div class="rpt-capa" style="${foto ? '' : `background:linear-gradient(135deg,${PALETTE.primaryDeep},${T.ink})`}">
+          ${foto ? `<img class="rpt-capa-img" src="${esc(foto)}" alt="">` : ''}
           <div class="rpt-capa-overlay"></div>
           <div class="rpt-capa-top"><span class="rpt-mark" style="background:${T.accent}">▲</span>${esc(MARCA.nome)}</div>
           <div class="rpt-capa-bottom">
@@ -1528,19 +1526,23 @@ export function EngRelatorioPDF({ goto }) {
     // conteúdo. Cada mini-cartão de foto já evita quebra sozinho.
     }).map((html, i) => {
       if (!html) return '';
-      // A capa é a folha de rosto: sem a moldura de cartão, ocupa a página
-      // inteira e empurra o resto do relatório para a página seguinte.
+      // A capa é a folha de rosto: sem a moldura de cartão, e vai ANTES do
+      // cabeçalho verde (ver capaHtml) — senão o cabeçalho ocupa o topo da
+      // folha 1 e a capa, que tem a altura da folha, não cabe e vai para a 2.
       if (pages[i].key === 'capa') return html;
       // Primeiro cartão de verdade não leva margem em cima — com a capa
       // presente ele é o i===1, não o i===0, então não dá para comparar com 0.
       const primeiroCartao = i === 0 || pages[i - 1].key === 'capa';
       return `<section class="rpt-card" style="${primeiroCartao ? '' : 'margin-top:16px'}"><div class="rpt-card-bar"></div><div class="rpt-card-body">${html}</div></section>`;
-    }).join('');
+    });
+    const capaHtml = pages.some(p => p.key === 'capa') ? sections[0] : '';
+    const corpoHtml = pages.map((p, i) => p.key === 'capa' ? '' : sections[i]).join('');
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${MARCA.nome} — ${weekLabel}</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:10mm}
 body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;background:#F3F5F4;color:#1B1B1B;font-size:9.5pt;line-height:1.45}
 .rpt-page{max-width:900px;margin:0 auto;padding:28px 24px 40px}
 .rpt-head{background:#0E3A2B;color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
@@ -1554,6 +1556,7 @@ body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;backgroun
 .rpt-card-body{padding:16px 18px;flex:1;min-width:0}
 .rpt-foot{text-align:center;color:#8A9A94;font-size:8.5pt;margin-top:26px;padding-top:12px;border-top:1px solid #DCE6E1}
 .rpt-capa{position:relative;min-height:600px;border-radius:14px;overflow:hidden;background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:space-between;break-after:page;box-shadow:0 1px 3px rgba(14,58,43,.08)}
+.rpt-capa-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .rpt-capa-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.12) 0%,rgba(0,0,0,.05) 35%,rgba(6,20,15,.88) 100%)}
 .rpt-capa-top{position:relative;padding:26px 30px 0;display:flex;align-items:center;gap:9px;color:#fff;font-weight:700;font-size:15px;font-family:'Space Grotesk',sans-serif;letter-spacing:-.2px}
 .rpt-capa-bottom{position:relative;padding:0 30px 34px;color:#fff}
@@ -1562,9 +1565,10 @@ body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;backgroun
 .rpt-capa-sub{font-size:13px;color:rgba(255,255,255,.8);margin-top:8px}
 .rpt-capa-periodo{display:flex;align-items:center;gap:10px;margin-top:18px;font-size:12.5px;font-weight:600}
 .rpt-capa-periodo span{width:22px;height:1px;background:rgba(255,255,255,.5)}
-@media print{body{background:#fff}.rpt-page{padding:0}.rpt-card{box-shadow:none;border:1px solid #E4E7EC}.rpt-capa{box-shadow:none;border-radius:0;min-height:calc(297mm - 24mm)}}
+@media print{body{background:#fff}.rpt-page{padding:0}.rpt-card{box-shadow:none;border:1px solid #E4E7EC}.rpt-capa{box-shadow:none;border-radius:0;height:275mm;min-height:0;break-inside:avoid}}
 </style>
 </head><body><div class="rpt-page">
+${capaHtml}
 <div class="rpt-head">
   <div>
     <div class="rpt-brand"><span class="rpt-mark">▲</span>${MARCA.nome}</div>
@@ -1572,7 +1576,7 @@ body{font-family:'DM Sans','Helvetica Neue',Helvetica,Arial,sans-serif;backgroun
   </div>
   <div class="rpt-badge">${weekLabel}<b>${new Date().toLocaleDateString('pt-BR')}</b></div>
 </div>
-${sections}
+${corpoHtml}
 <div class="rpt-foot">${OBRA_NOME} · Relatório gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
 </div></body></html>`;
 

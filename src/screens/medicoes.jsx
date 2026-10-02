@@ -12,7 +12,7 @@ import { fmtCur, fmtPct } from '../lib/moeda.js';
 import { numeroBR, ordenarEap, nivel, orcamentoAprovado, linhasVisiveis } from '../lib/eap.js';
 import {
   primeiroDia, ymDe, mapaDePercentuais, calcularMedicao, validarPercentual,
-  podeAbrirMes, podeReabrir, percentuaisAntesDe,
+  podeAbrirMes, podeReabrir, percentuaisAntesDe, percentuaisDepoisDe,
 } from '../lib/medicao-mensal.js';
 import { todasAsLinhas } from '../lib/paginar.js';
 import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
@@ -67,16 +67,18 @@ export function MedicoesScreen({ goto, profile, voltarPara = 'home' }) {
   const fechada = medicao && medicao.status === 'fechada';
 
   const base = useMemo(() => (ym ? percentuaisAntesDe(medicoes, itens, ym) : new Map()), [medicoes, itens, ym]);
+  // teto: o que um mês seguinte (já medido) diz de cada linha — só existe ao lançar um mês retroativo
+  const teto = useMemo(() => (ym ? percentuaisDepoisDe(medicoes, itens, ym) : new Map()), [medicoes, itens, ym]);
   const gravados = useMemo(() => (medicao ? mapaDePercentuais(itens, medicao.id) : new Map()), [itens, medicao]);
   // o que vale na conta: o gravado, com o digitado por cima quando é um número aceitável
   const atuais = useMemo(() => {
     const m = new Map(gravados);
     for (const [id, txt] of Object.entries(rascunho)) {
       const n = numeroBR(txt);
-      if (!Number.isNaN(n) && validarPercentual(n, base.get(id) ?? 0) === null) m.set(id, n);
+      if (!Number.isNaN(n) && validarPercentual(n, base.get(id) ?? 0, teto.get(id) ?? null) === null) m.set(id, n);
     }
     return m;
-  }, [gravados, rascunho, base]);
+  }, [gravados, rascunho, base, teto]);
   const conta = useMemo(() => calcularMedicao({ linhas: linhas || [], atuais, anteriores: base }), [linhas, atuais, base]);
 
   // ao trocar de mês ou de obra, some o que estava sendo digitado
@@ -95,6 +97,7 @@ export function MedicoesScreen({ goto, profile, voltarPara = 'home' }) {
 
   async function abrirMes() {
     if (!podeAbrir.ok || ocupado) return;
+    if (podeAbrir.retroativo && !confirm(`${rotuloMesAno(ym)} fica ANTES de um mês que já foi medido.\n\nO que você lançar aqui conta como já executado até o fim de ${rotuloMesAno(ym)}, e o valor do mês seguinte passa a ser só o que excede isso (o acumulado total não muda, mas o valor de cada mês sim).\n\nAbrir a medição de ${rotuloMesAno(ym)}?`)) return;
     setOcupado(true);
     const { error } = await supabase.from('medicoes_mensais').insert({ mes: primeiroDia(ym), status: 'aberta' });
     setOcupado(false);
@@ -107,7 +110,7 @@ export function MedicoesScreen({ goto, profile, voltarPara = 'home' }) {
     if (!aberta) return;
     const anterior = base.get(l.id) ?? 0;
     const n = numeroBR(txt);
-    const msg = Number.isNaN(n) ? 'Digite um número de 0 a 100.' : validarPercentual(n, anterior);
+    const msg = Number.isNaN(n) ? 'Digite um número de 0 a 100.' : validarPercentual(n, anterior, teto.get(l.id) ?? null);
     setErros(e => ({ ...e, [l.id]: msg || '' }));
     if (msg) return;
     if (gravados.get(l.id) === n) { setRascunho(r => { const c = { ...r }; delete c[l.id]; return c; }); return; }
@@ -125,7 +128,9 @@ export function MedicoesScreen({ goto, profile, voltarPara = 'home' }) {
     if (Object.keys(rascunho).length) { alert('Tem percentual digitado que ainda não foi salvo. Saia do campo (toque fora) e tente de novo.'); return; }
     if (Object.values(erros).some(Boolean)) { alert('Corrija os percentuais marcados em vermelho antes de fechar o mês.'); return; }
     const t = conta.total;
-    if (!confirm(`Fechar a medição de ${rotuloMesAno(ym)}?\n\nMedido no mês: ${fmtCur(t.medidoNoMes)}\nAcumulado: ${fmtCur(t.medidoAcumulado)} (${fmtPct(t.pctGeral)})\n\nDepois de fechado os números ficam travados e o valor do mês entra no Contas a receber.`)) return;
+    const temPosterior = medicoes.some(m => ymDe(m.mes) > ym);
+    const aviso = temPosterior ? '\n\nATENÇÃO: já existe medição de um mês seguinte, então este mês NÃO poderá ser reaberto depois (só a última medição reabre). Confira os percentuais antes de fechar.' : '';
+    if (!confirm(`Fechar a medição de ${rotuloMesAno(ym)}?\n\nMedido no mês: ${fmtCur(t.medidoNoMes)}\nAcumulado: ${fmtCur(t.medidoAcumulado)} (${fmtPct(t.pctGeral)})\n\nDepois de fechado os números ficam travados e o valor do mês entra no Contas a receber.${aviso}`)) return;
     setOcupado(true);
     const { error } = await supabase.from('medicoes_mensais')
       .update({ status: 'fechada', fechada_em: new Date().toISOString(), fechada_por_nome: profile?.nome || null }).eq('id', medicao.id);
@@ -206,7 +211,7 @@ export function MedicoesScreen({ goto, profile, voltarPara = 'home' }) {
             {!medicao && (
               <div className="card" style={{ padding: 18, textAlign: 'center', marginBottom: 12 }}>
                 <div className="t-caption" style={{ fontSize: 12.5, marginBottom: 10, lineHeight: 1.5 }}>
-                  {podeAbrir.ok ? `Nenhuma medição em ${rotuloMesAno(ym)} ainda.` : podeAbrir.motivo}
+                  {podeAbrir.ok ? `Nenhuma medição em ${rotuloMesAno(ym)} ainda.${podeAbrir.retroativo ? ' Este mês é anterior a outro já medido: dá para lançar o que ficou para trás (feche cada mês antes de abrir o próximo).' : ''}` : podeAbrir.motivo}
                 </div>
                 {podeAbrir.ok && <button className="btn btn-primary btn-sm" disabled={ocupado} onClick={abrirMes}>Abrir medição de {rotuloMesAno(ym)}</button>}
               </div>
@@ -274,7 +279,7 @@ export function MedicoesScreen({ goto, profile, voltarPara = 'home' }) {
                               <span style={{ color: 'var(--text-3)', fontWeight: 800, marginRight: 6 }}>{l.codigo}</span>{l.descricao}
                             </div>
                             <div className="t-caption" style={{ fontSize: 11, marginTop: 2 }}>
-                              {fmtCur(c.valorLinha)}{anterior ? ` · mês anterior ${fmtPct(anterior)}` : ''}
+                              {fmtCur(c.valorLinha)}{anterior ? ` · mês anterior ${fmtPct(anterior)}` : ''}{aberta && teto.has(l.id) ? ` · mês seguinte ${fmtPct(teto.get(l.id))}` : ''}
                               {c.valorNoMes ? <b style={{ color: 'var(--primary)' }}> · no mês {fmtCur(c.valorNoMes)}</b> : null}
                             </div>
                           </div>

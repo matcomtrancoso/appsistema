@@ -27,6 +27,13 @@ async function inserirEmLotes(tabela, linhas) {
   return null;
 }
 
+// Orçamento aprovado que ganha serviço novo (aditivo): o valor aprovado é o que o Contas a
+// receber usa como total do contrato, então acompanha o orçamento. Mantém a data de aprovação.
+async function gravarValorAprovado(contrato, total) {
+  const { error } = await supabase.from('obra_contrato').upsert({ valor_aprovado: total, aprovado_em: contrato.aprovado_em }, { onConflict: 'obra_id' });
+  return error;
+}
+
 export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
   const hoje = hojeLocal();
   const [linhas, setLinhas] = useState(null);
@@ -64,6 +71,8 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
   const total = totalEap(linhas || []);
   const ligadas = new Set(cronograma.map(t => t.orcamento_eap_id).filter(Boolean));
   const trocaTotal = podeSubstituirOrcamento({ contrato, medicoes, tarefasLigadas: ligadas.size });
+  const valorAprovado = Number(contrato?.valor_aprovado) || 0;
+  const divergente = aprovado && Math.abs(total - valorAprovado) > 0.005;
   const faltamNoCronograma = (linhas || []).filter(l => !ligadas.has(l.id)).length;
 
   // linhas visíveis: sem ancestral recolhido; com busca, só as que combinam
@@ -82,6 +91,15 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
     const { error } = await supabase.from('obra_contrato').upsert({ valor_aprovado: total, aprovado_em: hoje }, { onConflict: 'obra_id' });
     setOcupado(false);
     if (error) { avisarErro(error, 'aprovar o orçamento'); return; }
+    carregar();
+  }
+
+  async function atualizarValorAprovado() {
+    if (!confirm(`Atualizar o valor aprovado de ${fmtCur(valorAprovado)} para ${fmtCur(total)}?\n\nÉ esse valor que o Contas a receber usa como total do contrato.`)) return;
+    setOcupado(true);
+    const error = await gravarValorAprovado(contrato, total);
+    setOcupado(false);
+    if (error) { avisarErro(error, 'atualizar o valor aprovado'); return; }
     carregar();
   }
 
@@ -161,8 +179,8 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                {!aprovado && <button className="btn btn-secondary btn-sm" onClick={() => setImportando(true)}><span style={{ width: 14, height: 14 }}>{Icon.download}</span>Importar planilha</button>}
-                {!aprovado && <button className="btn btn-secondary btn-sm" onClick={() => setEditando({ nova: true, pai: null })}><span style={{ width: 14, height: 14 }}>{Icon.plus}</span>Linha</button>}
+                <button className="btn btn-secondary btn-sm" onClick={() => setImportando(true)}><span style={{ width: 14, height: 14 }}>{Icon.download}</span>{aprovado ? 'Novos serviços (planilha)' : 'Importar planilha'}</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setEditando({ nova: true, pai: null })}><span style={{ width: 14, height: 14 }}>{Icon.plus}</span>Linha</button>
                 {!aprovado && linhas.length > 0 && <button className="btn btn-primary btn-sm" disabled={ocupado} onClick={aprovar}>Aprovar orçamento</button>}
                 {aprovado && <button className="btn btn-primary btn-sm" disabled={ocupado || faltamNoCronograma === 0} onClick={gerarCronograma}>
                   {faltamNoCronograma === 0 ? '✓ Cronograma gerado' : `Gerar cronograma (${faltamNoCronograma})`}</button>}
@@ -171,7 +189,13 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
               </div>
               {aprovado && (
                 <div className="t-caption" style={{ fontSize: 11, marginTop: 10, lineHeight: 1.45 }}>
-                  Orçamento aprovado: as linhas estão travadas.{temMedicao ? ' Já há medição lançada, então não dá mais para reabrir.' : ' Para mudar algo, reabra.'}
+                  Orçamento aprovado: as linhas que já existem estão travadas, mas dá para <b>acrescentar serviços novos</b> (planilha ou Linha) mesmo com medição lançada — o valor aprovado acompanha, e os itens novos entram nas próximas medições com 0%.{temMedicao ? ' Para mudar quantidade ou preço de um item que já existe não dá mais: já há medição lançada, então não dá para reabrir.' : ' Para mudar algo que já existe, reabra.'}
+                </div>
+              )}
+              {divergente && (
+                <div className="card" style={{ padding: '10px 12px', marginTop: 10, boxShadow: 'none', background: 'var(--warn-tint, #FEF3C7)', fontSize: 12.5, fontWeight: 600, lineHeight: 1.5, color: 'var(--text-2)' }}>
+                  ⚠️ O orçamento ({fmtCur(total)}) está diferente do valor aprovado ({fmtCur(valorAprovado)}) — é o valor aprovado que o Contas a receber usa.
+                  <div style={{ marginTop: 6 }}><button className="btn btn-primary btn-sm" disabled={ocupado} onClick={atualizarValorAprovado}>Atualizar valor aprovado</button></div>
                 </div>
               )}
             </div>
@@ -212,12 +236,12 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: grupo ? 14 : 13, fontWeight: 900, color: 'var(--text-1)' }}>{fmtCur(valores.get(l.codigo) || 0)}</div>
-                            {!aprovado && (
+                            {(!aprovado || grupo) && (
                               <div style={{ display: 'flex', gap: 2, justifyContent: 'flex-end', marginTop: 2 }}>
                                 {grupo && <button onClick={() => setEditando({ nova: true, pai: l.codigo })} title="Adicionar linha dentro deste grupo" aria-label="Adicionar linha neste grupo"
                                   style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--primary)', fontSize: 11, fontWeight: 800, padding: '2px 4px' }}>＋ linha</button>}
-                                <button onClick={() => apagarLinha(l)} title="Apagar" aria-label="Apagar a linha"
-                                  style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12, padding: '2px 4px' }}>🗑</button>
+                                {!aprovado && <button onClick={() => apagarLinha(l)} title="Apagar" aria-label="Apagar a linha"
+                                  style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: 12, padding: '2px 4px' }}>🗑</button>}
                               </div>
                             )}
                           </div>
@@ -233,15 +257,16 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
         )}
       </div>
 
-      {editando && <LinhaPopup alvo={editando} linhas={linhas} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); carregar(); }} />}
-      {importando && <ImportarPopup linhasAtuais={linhas} trocaTotal={trocaTotal} temMesFechado={temMesFechado} onFechar={() => setImportando(false)} onImportado={() => { setImportando(false); carregar(); }} />}
+      {editando && <LinhaPopup alvo={editando} linhas={linhas} contrato={contrato} total={total} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); carregar(); }} />}
+      {importando && <ImportarPopup linhasAtuais={linhas} contrato={contrato} trocaTotal={trocaTotal} temMesFechado={temMesFechado} onFechar={() => setImportando(false)} onImportado={() => { setImportando(false); carregar(); }} />}
     </div>
   );
 }
 
 // ── Criar / editar uma linha ────────────────────────────────────────────────
-function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
+function LinhaPopup({ alvo, linhas, contrato, total, onFechar, onSalvo }) {
   const nova = !!alvo.nova;
+  const aprovado = orcamentoAprovado(contrato);
   const linha = nova ? null : alvo;
   const [codigo, setCodigo] = useState(nova ? proximoCodigo(linhas, alvo.pai || null) : linha.codigo);
   const [descricao, setDescricao] = useState(linha?.descricao || '');
@@ -256,11 +281,14 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
   // O item de cima sai do próprio código (3.2 -> 3): o seletor só ajuda a escolher, não pode divergir dele.
   const pai = nova ? (paiDe(codigo.trim()) || '') : '';
   const paiLinha = linhas.find(l => l.codigo === pai);
-  const converte = nova && paiLinha && !paiLinha.is_grupo && (Number(paiLinha.quantidade) || Number(paiLinha.preco_unitario));
+  // Orçamento aprovado: serviço novo entra, mas nunca transforma uma linha que já existe (pode estar medida) em grupo.
+  const paiTravado = aprovado && !!paiLinha && !paiLinha.is_grupo;
+  const converte = nova && !aprovado && paiLinha && !paiLinha.is_grupo && (Number(paiLinha.quantidade) || Number(paiLinha.preco_unitario));
   const q = numeroBR(quantidade);
   const p = parseV(preco) ?? 0;
+  const valorNovo = nova && !novoGrupo && !Number.isNaN(q) ? Math.round(q * p * 100) / 100 : 0;
   const codigoRepetido = nova && linhas.some(l => l.codigo === codigo.trim());
-  const codigoOk = CODIGO_VALIDO.test(codigo.trim()) && (!pai || !!paiLinha);
+  const codigoOk = CODIGO_VALIDO.test(codigo.trim()) && (!pai || !!paiLinha) && !paiTravado;
   const pronto = descricao.trim() && (ehGrupo || (!Number.isNaN(q) && q >= 0)) && (!nova || (codigoOk && !codigoRepetido));
 
   function trocarPai(novoPai) { setCodigo(proximoCodigo(linhas, novoPai || null)); }
@@ -296,6 +324,11 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
             ...(preco !== precoInicial ? { preco_unitario: p } : {}) }).eq('id', linha.id);
       erroBanco = r.error;
     }
+    // Aditivo: o valor aprovado acompanha o serviço novo (se falhar, a tela mostra o aviso com o botão para atualizar).
+    if (!erroBanco && nova && aprovado && valorNovo > 0) {
+      const e = await gravarValorAprovado(contrato, Math.round((total + valorNovo) * 100) / 100);
+      if (e) avisarErro(e, 'atualizar o valor aprovado (a linha foi salva: use o botão "Atualizar valor aprovado")');
+    }
     setSalvando(false);
     if (erroBanco) { avisarErro(erroBanco, 'salvar a linha'); return; }
     onSalvo();
@@ -313,7 +346,7 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
           <div style={rotulo}>ITEM (CÓDIGO DA EAP) *</div>
           <input value={codigo} onChange={e => setCodigo(e.target.value)} style={{ ...campo, marginBottom: codigoRepetido || !codigoOk ? 4 : 12 }} />
           {codigoRepetido && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 10 }}>Já existe uma linha {codigo.trim()}.</div>}
-          {!codigoRepetido && !codigoOk && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 10 }}>{pai && !paiLinha ? `O item de cima (${pai}) ainda não existe: crie ele primeiro.` : 'Use números separados por ponto (ex.: 3 ou 3.1).'}</div>}
+          {!codigoRepetido && !codigoOk && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 10 }}>{pai && !paiLinha ? `O item de cima (${pai}) ainda não existe: crie ele primeiro.` : paiTravado ? `O orçamento está aprovado: ${pai} é um item com quantidade e preço e não pode virar grupo. Ponha o serviço novo em um grupo (ou crie um grupo novo).` : 'Use números separados por ponto (ex.: 3 ou 3.1).'}</div>}
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)', marginBottom: 12, cursor: 'pointer' }}>
             <input type="checkbox" checked={novoGrupo} onChange={e => setNovoGrupo(e.target.checked)} />
             É um título (grupo): vai ter itens dentro, e o valor é a soma deles
@@ -337,6 +370,11 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
         </>
       )}
       {ehGrupo && <div className="t-caption" style={{ fontSize: 12, marginBottom: 14 }}>{nova ? 'Depois de salvar, use "＋ linha" no título para pôr os itens dentro dele.' : 'Esta linha tem filhos: o valor dela é a soma deles.'}</div>}
+      {aprovado && nova && valorNovo > 0 && (
+        <div className="card" style={{ padding: '10px 12px', marginBottom: 12, boxShadow: 'none', background: 'var(--surface-2)', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', lineHeight: 1.45 }}>
+          Serviço novo no orçamento aprovado: o valor aprovado passa de {fmtCur(Number(contrato?.valor_aprovado) || 0)} para {fmtCur(Math.round((total + valorNovo) * 100) / 100)}.
+        </div>
+      )}
       {converte && (
         <div className="card" style={{ padding: '10px 12px', marginBottom: 12, background: 'var(--warn-tint, #FEF3C7)', boxShadow: 'none', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', lineHeight: 1.45 }}>
           ⚠️ A linha {pai} tem quantidade e preço. Ao ganhar filhos ela vira grupo e esses valores saem (vale a soma dos filhos).
@@ -366,8 +404,10 @@ function resumoMudanca(a) {
   return partes.join(' · ');
 }
 
-function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onImportado }) {
+function ImportarPopup({ linhasAtuais, contrato, trocaTotal, temMesFechado, onFechar, onImportado }) {
   const temLinhas = linhasAtuais.length > 0;
+  const aprovado = orcamentoAprovado(contrato);
+  const travado = temMesFechado || aprovado;   // linha que já existe não muda: só entram códigos novos
   const [texto, setTexto] = useState('');
   const [previa, setPrevia] = useState(null);   // { erros, lidas }
   const [modo, setModo] = useState('acrescentar');
@@ -375,7 +415,7 @@ function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onIm
   const [salvando, setSalvando] = useState(false);
 
   const substituir = !temLinhas || modo === 'substituir';
-  const atualizarDeFato = atualizar && !temMesFechado;   // mês fechado: o banco não deixa mudar valor de linha existente
+  const atualizarDeFato = atualizar && !travado;   // aprovado ou mês fechado (o banco recusa): linha existente não muda
 
   const lidas = previa?.lidas;
   const montado = useMemo(() => (substituir && lidas?.length ? montarEap(lidas) : null), [substituir, lidas]);
@@ -404,7 +444,7 @@ function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onIm
   }
 
   const avisos = (montado || mescla)?.avisos || [];
-  const bloqueioMes = !!mescla && temMesFechado && mescla.alteradas.length > 0;   // só sobra "vira grupo"
+  const bloqueioMes = !!mescla && travado && mescla.alteradas.length > 0;   // só sobra "vira grupo"
   const total = montado ? totalEap(montado.linhas) : mescla ? totalEap(mescla.finais) : 0;
   const semNada = !!mescla && !mescla.novas.length && !mescla.alteradas.length;
   const pronto = !!previa && !previa.erros.length && !!lidas?.length && !bloqueioMes && !semNada && !(substituir && temLinhas && !trocaTotal.ok);
@@ -415,7 +455,11 @@ function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onIm
   }
 
   async function acrescentar() {
-    if (mescla.alteradas.length && !confirm(`Atualizar ${mescla.alteradas.length} ${mescla.alteradas.length === 1 ? 'linha que já existe' : 'linhas que já existem'} e criar ${mescla.novas.length} ${mescla.novas.length === 1 ? 'nova' : 'novas'}?`)) return;
+    const totalNovo = totalEap(mescla.finais);
+    if (aprovado && !confirm(`Acrescentar ${mescla.novas.length} ${mescla.novas.length === 1 ? 'linha nova' : 'linhas novas'} ao orçamento aprovado?
+
+O valor aprovado passa de ${fmtCur(Number(contrato.valor_aprovado) || 0)} para ${fmtCur(totalNovo)}.`)) return;
+    if (!aprovado && mescla.alteradas.length && !confirm(`Atualizar ${mescla.alteradas.length} ${mescla.alteradas.length === 1 ? 'linha que já existe' : 'linhas que já existem'} e criar ${mescla.novas.length} ${mescla.novas.length === 1 ? 'nova' : 'novas'}?`)) return;
     setSalvando(true);
     // primeiro o que já existe (uma folha que ganha filho vira grupo antes de o filho entrar)
     let erro = null;
@@ -432,6 +476,10 @@ function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onIm
         codigo: l.codigo, pai_codigo: l.pai_codigo, descricao: l.descricao, unidade: l.unidade,
         quantidade: l.quantidade, preco_unitario: l.preco_unitario, is_grupo: l.is_grupo, ordem: ordemBase + i + 1,
       })));
+    }
+    if (!erro && aprovado) {
+      const e = await gravarValorAprovado(contrato, totalNovo);
+      if (e) avisarErro(e, 'atualizar o valor aprovado (as linhas foram salvas: use o botão "Atualizar valor aprovado")');
     }
     setSalvando(false);
     if (erro) { avisarErro(erro, 'atualizar o orçamento (parte das linhas pode já ter sido salva: confira a lista e importe de novo)'); onImportado(); return; }
@@ -482,9 +530,9 @@ function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onIm
           {opcao('acrescentar', 'Acrescentar à planilha atual (recomendado)', 'Cria os itens novos e atualiza os que mudaram. Nada é apagado; cronograma e medições continuam ligados.', false)}
           {opcao('substituir', 'Substituir tudo', 'Apaga as linhas atuais e põe a planilha no lugar.', !trocaTotal.ok, trocaTotal.motivo)}
           {!substituir && (
-            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--text-2)', fontWeight: 600, marginTop: 4, opacity: temMesFechado ? 0.6 : 1 }}>
-              <input type="checkbox" checked={atualizarDeFato} disabled={temMesFechado} onChange={e => setAtualizar(e.target.checked)} />
-              {temMesFechado ? 'Há mês de medição fechado: só dá para acrescentar itens novos.' : 'Atualizar também quantidade, preço e descrição dos itens que já existem'}
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--text-2)', fontWeight: 600, marginTop: 4, opacity: travado ? 0.6 : 1 }}>
+              <input type="checkbox" checked={atualizarDeFato} disabled={travado} onChange={e => setAtualizar(e.target.checked)} />
+              {aprovado ? 'Orçamento aprovado: só entram itens novos; os que já existem ficam travados.' : temMesFechado ? 'Há mês de medição fechado: só dá para acrescentar itens novos.' : 'Atualizar também quantidade, preço e descrição dos itens que já existem'}
             </label>
           )}
         </div>
@@ -514,7 +562,7 @@ function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onIm
           )}
           {bloqueioMes && (
             <div className="card" style={{ padding: '10px 12px', background: 'var(--danger-tint,#FEE2E2)', boxShadow: 'none', marginBottom: 8, fontSize: 12, color: 'var(--danger)', fontWeight: 600, lineHeight: 1.5 }}>
-              Há mês de medição fechado e esta planilha mudaria linhas que já existem ({mescla.alteradas.map(a => a.codigo).slice(0, 4).join(', ')}). Tire esses itens da planilha, ou ponha-os como filhos de um grupo novo.
+              {aprovado ? 'O orçamento está aprovado' : 'Há mês de medição fechado'} e esta planilha mudaria linhas que já existem ({mescla.alteradas.map(a => a.codigo).slice(0, 4).join(', ')}). Tire esses itens da planilha, ou ponha-os como filhos de um grupo novo.
             </div>
           )}
           {montado && !previa.erros.length && (

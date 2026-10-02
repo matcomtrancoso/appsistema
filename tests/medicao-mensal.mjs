@@ -1,4 +1,4 @@
-import { ymDe, primeiroDia, mapaDePercentuais, calcularMedicao, validarPercentual, podeAbrirMes, podeReabrir, resumoMesesFechados, percentuaisAntesDe } from '../src/lib/medicao-mensal.js';
+import { ymDe, primeiroDia, mapaDePercentuais, calcularMedicao, validarPercentual, podeAbrirMes, podeReabrir, resumoMesesFechados, percentuaisAntesDe, percentuaisDepoisDe } from '../src/lib/medicao-mensal.js';
 
 let ok = 0, tot = 0;
 function t(nome, cond) { tot++; if (cond) ok++; else console.error('FALHOU:', nome); }
@@ -45,7 +45,10 @@ t('recusa vazio e texto', validarPercentual('', 0) !== null && validarPercentual
 const meses = [{ id: 'm1', mes: '2026-08-01', status: 'fechada' }, { id: 'm2', mes: '2026-09-01', status: 'fechada' }];
 t('abre o mês seguinte quando tudo está fechado', podeAbrirMes(meses, '2026-10').ok === true);
 t('não abre mês repetido', podeAbrirMes(meses, '2026-09').ok === false);
-t('não abre mês antes de um já medido', podeAbrirMes(meses, '2026-07').ok === false);
+t('abre mês ANTERIOR a um já medido (retroativo) e avisa', podeAbrirMes(meses, '2026-07').ok === true && podeAbrirMes(meses, '2026-07').retroativo === true);
+t('mês seguinte ao último não é retroativo', podeAbrirMes(meses, '2026-10').retroativo === false);
+t('retroativo também respeita uma só aberta por vez', podeAbrirMes([{ id: 'm1', mes: '2026-10-01', status: 'aberta' }], '2026-07').ok === false);
+t('aceita até o do mês seguinte, recusa acima', validarPercentual(40, 30, 40) === null && validarPercentual(41, 30, 40).includes('40%'));
 t('não abre com mês aberto pendente', podeAbrirMes([{ id: 'm1', mes: '2026-08-01', status: 'aberta' }], '2026-09').ok === false);
 t('primeiro mês pode ser qualquer um', podeAbrirMes([], '2026-03').ok === true);
 t('só o último mês fechado reabre', podeReabrir(meses, '2026-09').ok === true && podeReabrir(meses, '2026-08').ok === false);
@@ -64,6 +67,11 @@ t('1º mês: a 50% (500) + c 10% (200)', res[0].medidoNoMes === 700 && res[0].me
 t('2º mês: só a avançou 30 pontos (300); c continua no do mês anterior', res[1].medidoNoMes === 300 && res[1].medidoAcumulado === 1000);
 t('base antes do mês 3 = o que sobrou dos anteriores', igual([...percentuaisAntesDe(meses, itens, '2026-10').entries()].sort(), [['a', 80], ['c', 10]]));
 t('base do 1º mês é vazia', percentuaisAntesDe(meses, itens, '2026-08').size === 0);
+const medsRetro = [{ id: 'm1', mes: '2026-08-01', status: 'fechada' }, { id: 'm2', mes: '2026-09-01', status: 'fechada' }, { id: 'm3', mes: '2026-10-01', status: 'fechada' }];
+const itensRetro = [{ medicao_id: 'm2', eap_id: 'a', percentual_acumulado: 60 }, { medicao_id: 'm3', eap_id: 'a', percentual_acumulado: 90 }, { medicao_id: 'm3', eap_id: 'b', percentual_acumulado: 20 }];
+t('teto de julho: o mês seguinte mais próximo que tem a linha (a=60 de setembro, b=20 de outubro)', igual([...percentuaisDepoisDe(medsRetro, itensRetro, '2026-07').entries()].sort(), [['a', 60], ['b', 20]]));
+t('teto do último mês é vazio', percentuaisDepoisDe(medsRetro, itensRetro, '2026-10').size === 0);
+t('mês retroativo: a base de outubro passa a ser a de setembro (valor do mês cai, acumulado igual)', percentuaisAntesDe(medsRetro, itensRetro, '2026-10').get('a') === 60);
 t('mapa de percentuais só pega a medição pedida', mapaDePercentuais(itens, 'm1').size === 2);
 
 console.log(`medicao-mensal: ${ok}/${tot}`);

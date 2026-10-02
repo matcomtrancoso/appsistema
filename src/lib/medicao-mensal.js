@@ -76,25 +76,29 @@ export function calcularMedicao({ linhas, atuais = new Map(), anteriores = new M
 }
 
 /** Mensagem de erro para um % digitado, ou null se serve. */
-export function validarPercentual(valor, anterior = 0) {
+export function validarPercentual(valor, anterior = 0, proximo = null) {
   const n = Number(valor);
   if (valor === '' || valor === null || valor === undefined || Number.isNaN(n)) return 'Digite um número de 0 a 100.';
   if (n < 0 || n > 100) return 'O percentual vai de 0 a 100.';
   if (n < anterior) return `Não pode ser menor que o do mês anterior (${anterior}%).`;
+  if (proximo !== null && proximo !== undefined && n > proximo) return `Não pode ser maior que o do mês seguinte (${proximo}%).`;
   return null;
 }
 
 // ── Que mês pode ser aberto, fechado, reaberto ──────────────────────────────
 const ordenadas = (medicoes) => [...medicoes].sort((a, b) => (ymDe(a.mes) < ymDe(b.mes) ? -1 : 1));
 
-/** Só se abre um mês novo depois de fechar todos os anteriores, e sempre depois do último já aberto. */
+/**
+ * Abre-se um mês que ainda não existe, com no máximo UMA medição aberta por vez (o banco também exige).
+ * Pode ser um mês ANTERIOR a outro já medido (lançar o que ficou para trás): `retroativo` avisa a tela,
+ * porque o valor do mês seguinte passa a ser só o que excede o desse mês.
+ */
 export function podeAbrirMes(medicoes, ym) {
   if (medicoes.some(m => ymDe(m.mes) === ym)) return { ok: false, motivo: 'Este mês já foi aberto.' };
-  const ult = ordenadas(medicoes).at(-1);
-  if (ult && ymDe(ult.mes) > ym) return { ok: false, motivo: 'Não dá para abrir um mês antes de outro já medido.' };
   const aberta = medicoes.find(m => m.status !== 'fechada');
-  if (aberta) return { ok: false, motivo: `Feche primeiro a medição de ${ymDe(aberta.mes)}.` };
-  return { ok: true, motivo: null };
+  if (aberta) return { ok: false, motivo: `Feche primeiro a medição de ${ymDe(aberta.mes)} (só uma fica aberta por vez).` };
+  const ult = ordenadas(medicoes).at(-1);
+  return { ok: true, motivo: null, retroativo: !!ult && ymDe(ult.mes) > ym };
 }
 
 /** Só a ÚLTIMA medição da obra reabre (senão os meses seguintes perdem a base) — o banco também exige. */
@@ -128,6 +132,19 @@ export function resumoMesesFechados({ linhas, medicoes, itens }) {
     anteriores = prox;
   }
   return saida;
+}
+
+/**
+ * O que já está lançado DEPOIS do mês `ym`, por linha: o primeiro mês seguinte que tem aquela linha.
+ * É o teto do mês `ym` — o acumulado não pode passar do que o mês seguinte já diz.
+ */
+export function percentuaisDepoisDe(medicoes, itens, ym) {
+  const teto = new Map();
+  for (const m of [...ordenadas(medicoes)].reverse()) {   // do mais novo para o mais antigo: o mais próximo escreve por último
+    if (ymDe(m.mes) <= ym) break;
+    mapaDePercentuais(itens, m.id).forEach((v, k) => teto.set(k, v));
+  }
+  return teto;
 }
 
 /**

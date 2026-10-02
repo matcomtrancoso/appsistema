@@ -9,8 +9,8 @@ import { hojeLocal, fmtDataBR } from '../lib/date';
 import { contem } from '../lib/busca';
 import { fmtV, parseV, fmtCur } from '../lib/moeda.js';
 import {
-  lerOrcamento, montarEap, numeroBR, ordenarEap, valoresPorCodigo, totalEap, subarvore,
-  proximoCodigo, cronogramaDeEap, nivel, CODIGO_VALIDO, orcamentoAprovado, podeReabrirOrcamento, podeSubstituirOrcamento, linhasVisiveis,
+  lerOrcamento, montarEap, mesclarOrcamento, numeroBR, ordenarEap, valoresPorCodigo, totalEap, subarvore,
+  proximoCodigo, cronogramaDeEap, nivel, paiDe, CODIGO_VALIDO, orcamentoAprovado, podeReabrirOrcamento, podeSubstituirOrcamento, linhasVisiveis,
 } from '../lib/eap.js';
 import { avisarErro, msgAmigavel } from '../lib/msg-amigavel';
 import { todasAsLinhas } from '../lib/paginar.js';
@@ -45,7 +45,7 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
       todasAsLinhas(() => supabase.from('orcamento_eap').select('*').order('ordem')),
       supabase.from('obra_contrato').select('*').maybeSingle(),
       todasAsLinhas(() => supabase.from('cronograma_itens').select('id, wbs_id, orcamento_eap_id').order('id')),
-      supabase.from('medicoes_mensais').select('id'),
+      supabase.from('medicoes_mensais').select('id, status'),
     ]);
     const falha = l.error || c.error || cr.error || m.error;
     if (falha) { setErro(msgAmigavel(falha, 'carregar o orçamento')); return; }
@@ -59,6 +59,7 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
 
   const aprovado = orcamentoAprovado(contrato);
   const temMedicao = medicoes.length > 0;
+  const temMesFechado = medicoes.some(m => m.status === 'fechada');
   const valores = useMemo(() => valoresPorCodigo(linhas || []), [linhas]);
   const total = totalEap(linhas || []);
   const ligadas = new Set(cronograma.map(t => t.orcamento_eap_id).filter(Boolean));
@@ -160,7 +161,7 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
                 </span>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                {!aprovado && <button className="btn btn-secondary btn-sm" disabled={!trocaTotal.ok && linhas.length > 0} title={!trocaTotal.ok && linhas.length > 0 ? trocaTotal.motivo : undefined} onClick={() => setImportando(true)}><span style={{ width: 14, height: 14 }}>{Icon.download}</span>Importar planilha</button>}
+                {!aprovado && <button className="btn btn-secondary btn-sm" onClick={() => setImportando(true)}><span style={{ width: 14, height: 14 }}>{Icon.download}</span>Importar planilha</button>}
                 {!aprovado && <button className="btn btn-secondary btn-sm" onClick={() => setEditando({ nova: true, pai: null })}><span style={{ width: 14, height: 14 }}>{Icon.plus}</span>Linha</button>}
                 {!aprovado && linhas.length > 0 && <button className="btn btn-primary btn-sm" disabled={ocupado} onClick={aprovar}>Aprovar orçamento</button>}
                 {aprovado && <button className="btn btn-primary btn-sm" disabled={ocupado || faltamNoCronograma === 0} onClick={gerarCronograma}>
@@ -233,7 +234,7 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
       </div>
 
       {editando && <LinhaPopup alvo={editando} linhas={linhas} onFechar={() => setEditando(null)} onSalvo={() => { setEditando(null); carregar(); }} />}
-      {importando && <ImportarPopup linhasAtuais={linhas} onFechar={() => setImportando(false)} onImportado={() => { setImportando(false); carregar(); }} />}
+      {importando && <ImportarPopup linhasAtuais={linhas} trocaTotal={trocaTotal} temMesFechado={temMesFechado} onFechar={() => setImportando(false)} onImportado={() => { setImportando(false); carregar(); }} />}
     </div>
   );
 }
@@ -242,25 +243,27 @@ export function OrcamentoObraScreen({ goto, voltarPara = 'home' }) {
 function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
   const nova = !!alvo.nova;
   const linha = nova ? null : alvo;
-  const [pai, setPai] = useState(nova ? (alvo.pai || '') : (linha.pai_codigo || ''));
   const [codigo, setCodigo] = useState(nova ? proximoCodigo(linhas, alvo.pai || null) : linha.codigo);
   const [descricao, setDescricao] = useState(linha?.descricao || '');
   const [unidade, setUnidade] = useState(linha?.unidade || '');
   const [quantidade, setQuantidade] = useState(linha ? String(linha.quantidade).replace('.', ',') : '');
   const precoInicial = linha ? fmtCur(linha.preco_unitario) : '';
   const [preco, setPreco] = useState(precoInicial);
+  const [novoGrupo, setNovoGrupo] = useState(false);   // linha nova que é título, com itens dentro
   const [salvando, setSalvando] = useState(false);
 
-  const ehGrupo = !!linha?.is_grupo;
+  const ehGrupo = !!linha?.is_grupo || (nova && novoGrupo);
+  // O item de cima sai do próprio código (3.2 -> 3): o seletor só ajuda a escolher, não pode divergir dele.
+  const pai = nova ? (paiDe(codigo.trim()) || '') : '';
   const paiLinha = linhas.find(l => l.codigo === pai);
   const converte = nova && paiLinha && !paiLinha.is_grupo && (Number(paiLinha.quantidade) || Number(paiLinha.preco_unitario));
   const q = numeroBR(quantidade);
   const p = parseV(preco) ?? 0;
   const codigoRepetido = nova && linhas.some(l => l.codigo === codigo.trim());
-  const codigoOk = CODIGO_VALIDO.test(codigo.trim()) && (!pai || codigo.trim().startsWith(pai + '.'));
+  const codigoOk = CODIGO_VALIDO.test(codigo.trim()) && (!pai || !!paiLinha);
   const pronto = descricao.trim() && (ehGrupo || (!Number.isNaN(q) && q >= 0)) && (!nova || (codigoOk && !codigoRepetido));
 
-  function trocarPai(novoPai) { setPai(novoPai); if (nova) setCodigo(proximoCodigo(linhas, novoPai || null)); }
+  function trocarPai(novoPai) { setCodigo(proximoCodigo(linhas, novoPai || null)); }
 
   async function salvar() {
     if (!pronto || salvando) return;
@@ -276,8 +279,8 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
       if (!erroBanco) {
         const ordem = linhas.reduce((m, l) => Math.max(m, l.ordem || 0), 0) + 1;
         const r = await supabase.from('orcamento_eap').insert({
-          codigo: codigo.trim(), pai_codigo: pai || null, descricao: descricao.trim(), unidade: unidade.trim(),
-          quantidade: q || 0, preco_unitario: p, is_grupo: false, ordem,
+          codigo: codigo.trim(), pai_codigo: pai || null, descricao: descricao.trim(), unidade: novoGrupo ? '' : unidade.trim(),
+          quantidade: novoGrupo ? 0 : (q || 0), preco_unitario: novoGrupo ? 0 : p, is_grupo: novoGrupo, ordem,
         });
         erroBanco = r.error;
         if (erroBanco && virouGrupo) {
@@ -310,7 +313,11 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
           <div style={rotulo}>ITEM (CÓDIGO DA EAP) *</div>
           <input value={codigo} onChange={e => setCodigo(e.target.value)} style={{ ...campo, marginBottom: codigoRepetido || !codigoOk ? 4 : 12 }} />
           {codigoRepetido && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 10 }}>Já existe uma linha {codigo.trim()}.</div>}
-          {!codigoRepetido && !codigoOk && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 10 }}>Use números separados por ponto{pai ? ` começando por ${pai}.` : ' (ex.: 3 ou 3.1).'}</div>}
+          {!codigoRepetido && !codigoOk && <div className="t-caption" style={{ fontSize: 11, color: 'var(--danger)', marginBottom: 10 }}>{pai && !paiLinha ? `O item de cima (${pai}) ainda não existe: crie ele primeiro.` : 'Use números separados por ponto (ex.: 3 ou 3.1).'}</div>}
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, fontWeight: 700, color: 'var(--text-2)', marginBottom: 12, cursor: 'pointer' }}>
+            <input type="checkbox" checked={novoGrupo} onChange={e => setNovoGrupo(e.target.checked)} />
+            É um título (grupo): vai ter itens dentro, e o valor é a soma deles
+          </label>
         </>
       )}
       <div style={{ ...rotulo, marginTop: nova ? 0 : 12 }}>DESCRIÇÃO *</div>
@@ -329,7 +336,7 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
           </div>
         </>
       )}
-      {ehGrupo && <div className="t-caption" style={{ fontSize: 12, marginBottom: 14 }}>Esta linha tem filhos: o valor dela é a soma deles.</div>}
+      {ehGrupo && <div className="t-caption" style={{ fontSize: 12, marginBottom: 14 }}>{nova ? 'Depois de salvar, use "＋ linha" no título para pôr os itens dentro dele.' : 'Esta linha tem filhos: o valor dela é a soma deles.'}</div>}
       {converte && (
         <div className="card" style={{ padding: '10px 12px', marginBottom: 12, background: 'var(--warn-tint, #FEF3C7)', boxShadow: 'none', fontSize: 12, fontWeight: 600, color: 'var(--text-2)', lineHeight: 1.45 }}>
           ⚠️ A linha {pai} tem quantidade e preço. Ao ganhar filhos ela vira grupo e esses valores saem (vale a soma dos filhos).
@@ -341,17 +348,43 @@ function LinhaPopup({ alvo, linhas, onFechar, onSalvo }) {
 }
 
 // ── Importar planilha ───────────────────────────────────────────────────────
-function ImportarPopup({ linhasAtuais, onFechar, onImportado }) {
+// Dois jeitos. "Acrescentar" junta a planilha ao que já existe (serviço novo no
+// escopo): as linhas atuais continuam as mesmas, então cronograma e medição
+// ligados a elas não se perdem. "Substituir" apaga tudo e põe a planilha no lugar
+// — só vale sem cronograma gerado e sem medição (podeSubstituirOrcamento).
+const nomeCampo = { descricao: 'descrição', unidade: 'unidade', quantidade: 'qtd', preco_unitario: 'preço' };
+function resumoMudanca(a) {
+  const partes = [];
+  for (const k of ['descricao', 'unidade', 'quantidade', 'preco_unitario']) {
+    const antes = a.antes[k] ?? '', depois = a.depois[k] ?? '';
+    const numerico = k === 'quantidade' || k === 'preco_unitario';
+    if (numerico ? Math.abs(Number(antes) - Number(depois)) < 1e-9 : String(antes) === String(depois)) continue;
+    const f = k === 'preco_unitario' ? fmtCur : k === 'quantidade' ? fmtQtd : (x) => `"${x}"`;
+    partes.push(`${nomeCampo[k]} ${f(antes)} → ${f(depois)}`);
+  }
+  if (a.virouGrupo) partes.push('vira grupo (ganhou itens abaixo)');
+  return partes.join(' · ');
+}
+
+function ImportarPopup({ linhasAtuais, trocaTotal, temMesFechado, onFechar, onImportado }) {
   const temLinhas = linhasAtuais.length > 0;
   const [texto, setTexto] = useState('');
-  const [previa, setPrevia] = useState(null);
+  const [previa, setPrevia] = useState(null);   // { erros, lidas }
+  const [modo, setModo] = useState('acrescentar');
+  const [atualizar, setAtualizar] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  const substituir = !temLinhas || modo === 'substituir';
+  const atualizarDeFato = atualizar && !temMesFechado;   // mês fechado: o banco não deixa mudar valor de linha existente
+
+  const lidas = previa?.lidas;
+  const montado = useMemo(() => (substituir && lidas?.length ? montarEap(lidas) : null), [substituir, lidas]);
+  const mescla = useMemo(() => (!substituir && lidas?.length ? mesclarOrcamento(linhasAtuais, lidas, { atualizar: atualizarDeFato }) : null),
+    [substituir, lidas, linhasAtuais, atualizarDeFato]);
 
   function analisar() {
     const lido = lerOrcamento(texto);
-    if (lido.erros.length && !lido.linhas.length) { setPrevia({ erros: lido.erros, avisos: [], linhas: [] }); return; }
-    const { linhas, avisos } = montarEap(lido.linhas);
-    setPrevia({ erros: lido.erros, avisos, linhas });
+    setPrevia({ erros: lido.erros, lidas: lido.linhas });
   }
 
   function lerArquivo(e) {
@@ -370,15 +403,49 @@ function ImportarPopup({ linhasAtuais, onFechar, onImportado }) {
     e.target.value = '';
   }
 
+  const avisos = (montado || mescla)?.avisos || [];
+  const bloqueioMes = !!mescla && temMesFechado && mescla.alteradas.length > 0;   // só sobra "vira grupo"
+  const total = montado ? totalEap(montado.linhas) : mescla ? totalEap(mescla.finais) : 0;
+  const semNada = !!mescla && !mescla.novas.length && !mescla.alteradas.length;
+  const pronto = !!previa && !previa.erros.length && !!lidas?.length && !bloqueioMes && !semNada && !(substituir && temLinhas && !trocaTotal.ok);
+
   async function importar() {
-    if (!previa?.linhas.length || previa.erros.length || salvando) return;
+    if (!pronto || salvando) return;
+    if (substituir) await substituirTudo(); else await acrescentar();
+  }
+
+  async function acrescentar() {
+    if (mescla.alteradas.length && !confirm(`Atualizar ${mescla.alteradas.length} ${mescla.alteradas.length === 1 ? 'linha que já existe' : 'linhas que já existem'} e criar ${mescla.novas.length} ${mescla.novas.length === 1 ? 'nova' : 'novas'}?`)) return;
+    setSalvando(true);
+    // primeiro o que já existe (uma folha que ganha filho vira grupo antes de o filho entrar)
+    let erro = null;
+    for (let i = 0; i < mescla.alteradas.length && !erro; i += 10) {
+      const rs = await Promise.all(mescla.alteradas.slice(i, i + 10).map(a => supabase.from('orcamento_eap').update({
+        descricao: a.depois.descricao, unidade: a.depois.unidade, quantidade: a.depois.quantidade,
+        preco_unitario: a.depois.preco_unitario, is_grupo: a.depois.is_grupo,
+      }).eq('id', a.id)));
+      erro = rs.find(r => r.error)?.error || null;
+    }
+    if (!erro) {
+      const ordemBase = linhasAtuais.reduce((m, l) => Math.max(m, l.ordem || 0), 0);
+      erro = await inserirEmLotes('orcamento_eap', mescla.novas.map((l, i) => ({
+        codigo: l.codigo, pai_codigo: l.pai_codigo, descricao: l.descricao, unidade: l.unidade,
+        quantidade: l.quantidade, preco_unitario: l.preco_unitario, is_grupo: l.is_grupo, ordem: ordemBase + i + 1,
+      })));
+    }
+    setSalvando(false);
+    if (erro) { avisarErro(erro, 'atualizar o orçamento (parte das linhas pode já ter sido salva: confira a lista e importe de novo)'); onImportado(); return; }
+    onImportado();
+  }
+
+  async function substituirTudo() {
     if (temLinhas && !confirm('Já existe um orçamento rascunho. Substituir tudo pelo que está na planilha?\n\nAs linhas atuais serão apagadas.')) return;
     setSalvando(true);
     if (temLinhas) {
       const { error } = await supabase.from('orcamento_eap').delete();
       if (error) { setSalvando(false); avisarErro(error, 'limpar o orçamento antigo'); return; }
     }
-    const novas = previa.linhas.map(l => ({
+    const novas = montado.linhas.map(l => ({
       codigo: l.codigo, pai_codigo: l.pai_codigo, descricao: l.descricao, unidade: l.unidade,
       quantidade: l.quantidade, preco_unitario: l.preco_unitario, is_grupo: l.is_grupo, ordem: l.ordem,
     }));
@@ -397,12 +464,31 @@ function ImportarPopup({ linhasAtuais, onFechar, onImportado }) {
     onImportado();
   }
 
-  const total = previa ? totalEap(previa.linhas) : 0;
+  const opcao = (valor, titulo, descricao, desabilitada, motivo) => (
+    <label key={valor} style={{ display: 'flex', gap: 9, alignItems: 'flex-start', padding: '9px 11px', borderRadius: 12, marginBottom: 6, cursor: desabilitada ? 'not-allowed' : 'pointer',
+      border: `1.5px solid ${modo === valor ? 'var(--primary)' : 'var(--border)'}`, opacity: desabilitada ? 0.55 : 1, background: modo === valor ? 'var(--surface-2)' : 'transparent' }}>
+      <input type="radio" name="modo-import" checked={modo === valor} disabled={desabilitada} onChange={() => setModo(valor)} style={{ marginTop: 3 }} />
+      <span style={{ fontSize: 12.5, lineHeight: 1.4 }}><b>{titulo}</b><br /><span style={{ color: 'var(--text-2)' }}>{desabilitada ? motivo : descricao}</span></span>
+    </label>
+  );
+
   return (
     <Popup titulo="📥 Importar orçamento" onFechar={onFechar}>
       <div className="t-caption" style={{ margin: '10px 0', lineHeight: 1.5, fontSize: 12 }}>
         Copie as células da planilha (colunas <b>Item · Descrição · Un · Quantidade · Preço unitário</b>, com ou sem cabeçalho) e cole aqui — ou escolha um arquivo .csv/.txt. O <b>Item</b> é o código da EAP (1, 1.1, 1.1.1…); quem tem filhos vira grupo.
       </div>
+      {temLinhas && (
+        <div style={{ marginBottom: 10 }}>
+          {opcao('acrescentar', 'Acrescentar à planilha atual (recomendado)', 'Cria os itens novos e atualiza os que mudaram. Nada é apagado; cronograma e medições continuam ligados.', false)}
+          {opcao('substituir', 'Substituir tudo', 'Apaga as linhas atuais e põe a planilha no lugar.', !trocaTotal.ok, trocaTotal.motivo)}
+          {!substituir && (
+            <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--text-2)', fontWeight: 600, marginTop: 4, opacity: temMesFechado ? 0.6 : 1 }}>
+              <input type="checkbox" checked={atualizarDeFato} disabled={temMesFechado} onChange={e => setAtualizar(e.target.checked)} />
+              {temMesFechado ? 'Há mês de medição fechado: só dá para acrescentar itens novos.' : 'Atualizar também quantidade, preço e descrição dos itens que já existem'}
+            </label>
+          )}
+        </div>
+      )}
       <label className="btn btn-ghost btn-sm" style={{ marginBottom: 8, cursor: 'pointer' }}>
         Escolher arquivo
         <input type="file" accept=".csv,.txt,.tsv,text/plain,text/csv" onChange={lerArquivo} style={{ display: 'none' }} />
@@ -420,21 +506,42 @@ function ImportarPopup({ linhasAtuais, onFechar, onImportado }) {
               {previa.erros.length > 8 && <div>… e mais {previa.erros.length - 8}.</div>}
             </div>
           )}
-          {previa.avisos.length > 0 && (
+          {avisos.length > 0 && (
             <div className="card" style={{ padding: '10px 12px', background: 'var(--warn-tint, #FEF3C7)', boxShadow: 'none', marginBottom: 8, fontSize: 12, color: 'var(--text-2)', fontWeight: 600, lineHeight: 1.5 }}>
-              {previa.avisos.slice(0, 5).map((a, i) => <div key={i}>ℹ️ {a}</div>)}
-              {previa.avisos.length > 5 && <div>… e mais {previa.avisos.length - 5} avisos.</div>}
+              {avisos.slice(0, 5).map((a, i) => <div key={i}>ℹ️ {a}</div>)}
+              {avisos.length > 5 && <div>… e mais {avisos.length - 5} avisos.</div>}
             </div>
           )}
-          {previa.linhas.length > 0 && !previa.erros.length && (
+          {bloqueioMes && (
+            <div className="card" style={{ padding: '10px 12px', background: 'var(--danger-tint,#FEE2E2)', boxShadow: 'none', marginBottom: 8, fontSize: 12, color: 'var(--danger)', fontWeight: 600, lineHeight: 1.5 }}>
+              Há mês de medição fechado e esta planilha mudaria linhas que já existem ({mescla.alteradas.map(a => a.codigo).slice(0, 4).join(', ')}). Tire esses itens da planilha, ou ponha-os como filhos de um grupo novo.
+            </div>
+          )}
+          {montado && !previa.erros.length && (
             <div className="card" style={{ padding: '10px 12px', boxShadow: 'none', border: '0.5px solid var(--border)', fontSize: 13 }}>
-              <b>{previa.linhas.length}</b> linhas ({previa.linhas.filter(l => l.is_grupo).length} grupos) · total <b>{fmtCur(total)}</b>
+              <b>{montado.linhas.length}</b> linhas ({montado.linhas.filter(l => l.is_grupo).length} grupos) · total <b>{fmtCur(total)}</b>
+            </div>
+          )}
+          {mescla && !previa.erros.length && (
+            <div className="card" style={{ padding: '10px 12px', boxShadow: 'none', border: '0.5px solid var(--border)', fontSize: 13, lineHeight: 1.55 }}>
+              <div><b>{mescla.novas.length}</b> {mescla.novas.length === 1 ? 'linha nova' : 'linhas novas'} · <b>{mescla.alteradas.length}</b> {mescla.alteradas.length === 1 ? 'atualizada' : 'atualizadas'} · {mescla.iguais} sem mudança{mescla.ficam > 0 ? ` · ${mescla.ficam} que não estão na planilha ficam como estão` : ''}</div>
+              <div>Total do orçamento depois: <b>{fmtCur(total)}</b></div>
+              {mescla.novas.length > 0 && (
+                <div className="t-caption" style={{ fontSize: 11.5, marginTop: 4 }}>
+                  Novas: {mescla.novas.slice(0, 6).map(l => `${l.codigo} ${l.descricao}`).join(' · ')}{mescla.novas.length > 6 ? ` … e mais ${mescla.novas.length - 6}` : ''}
+                </div>
+              )}
+              {mescla.alteradas.slice(0, 6).map(a => (
+                <div key={a.id} className="t-caption" style={{ fontSize: 11.5, marginTop: 2 }}>✎ {a.codigo}: {resumoMudanca(a)}</div>
+              ))}
+              {mescla.alteradas.length > 6 && <div className="t-caption" style={{ fontSize: 11.5 }}>… e mais {mescla.alteradas.length - 6} atualizações.</div>}
+              {semNada && <div style={{ color: 'var(--text-2)', fontWeight: 700, marginTop: 4 }}>Nada a fazer: a planilha é igual ao orçamento atual.</div>}
             </div>
           )}
         </div>
       )}
-      <Rodape onFechar={onFechar} onConfirmar={importar} pronto={!!previa?.linhas.length && !previa.erros.length} salvando={salvando}
-        texto={temLinhas ? 'Substituir orçamento' : 'Importar'} />
+      <Rodape onFechar={onFechar} onConfirmar={importar} pronto={pronto} salvando={salvando}
+        texto={substituir ? (temLinhas ? 'Substituir orçamento' : 'Importar') : 'Aplicar na planilha'} />
     </Popup>
   );
 }

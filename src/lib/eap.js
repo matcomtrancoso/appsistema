@@ -163,6 +163,45 @@ export function montarEap(brutas) {
   return { linhas, avisos };
 }
 
+// ── Planilha nova por cima do orçamento que já existe ───────────────────────
+const mesmoNumero = (a, b) => Math.abs((Number(a) || 0) - (Number(b) || 0)) < 1e-9;
+
+/**
+ * Junta a planilha ao orçamento atual SEM apagar nada: o item que já existe
+ * continua a mesma linha (mesmo id), então o cronograma e as medições ligados a
+ * ela não se perdem. É o caminho de quem recebeu serviço novo no escopo.
+ *  · código que não existe ainda -> linha nova;
+ *  · código que existe e a planilha diz outra coisa -> alterada (só com `atualizar`);
+ *  · código que existe só no sistema (não está na planilha) -> fica como está.
+ * @param {object[]} atuais linhas do banco (com id)
+ * @param {object[]} lidas  linhas cruas de lerOrcamento()
+ * @returns {{finais:object[], novas:object[], alteradas:{id:string,codigo:string,antes:object,depois:object,virouGrupo:boolean}[], iguais:number, ficam:number, avisos:string[]}}
+ */
+export function mesclarOrcamento(atuais, lidas, { atualizar = true } = {}) {
+  const cru = (l) => ({ codigo: l.codigo, descricao: l.descricao, unidade: l.unidade || '', quantidade: l.quantidade, preco_unitario: l.preco_unitario });
+  const atualPorCodigo = new Map(atuais.map(l => [l.codigo, l]));
+  const brutas = new Map(atuais.map(l => [l.codigo, cru(l)]));
+  const naPlanilha = new Set();
+  for (const l of lidas) {
+    naPlanilha.add(l.codigo);
+    if (!atualPorCodigo.has(l.codigo) || atualizar) brutas.set(l.codigo, cru(l));
+  }
+  const { linhas: finais, avisos } = montarEap([...brutas.values()]);
+
+  const novas = [], alteradas = [];
+  let iguais = 0;
+  for (const f of finais) {
+    const a = atualPorCodigo.get(f.codigo);
+    if (!a) { novas.push(f); continue; }
+    const mudou = f.descricao !== a.descricao || (f.unidade || '') !== (a.unidade || '') || !!f.is_grupo !== !!a.is_grupo
+      || !mesmoNumero(f.quantidade, a.quantidade) || !mesmoNumero(f.preco_unitario, a.preco_unitario);
+    if (mudou) alteradas.push({ id: a.id, codigo: f.codigo, antes: a, depois: f, virouGrupo: !a.is_grupo && !!f.is_grupo });
+    else iguais++;
+  }
+  const ficam = atuais.filter(l => !naPlanilha.has(l.codigo)).length;
+  return { finais, novas, alteradas, iguais, ficam, avisos };
+}
+
 // ── Valores ─────────────────────────────────────────────────────────────────
 export const valorFolha = (l) => r2((Number(l.quantidade) || 0) * (Number(l.preco_unitario) || 0));
 
